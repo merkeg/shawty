@@ -109,7 +109,6 @@ public class EntryService {
 
     }
 
-    @RequestScoped
     public boolean isLinkPreview(String userAgent) {
         if(userAgent.toLowerCase().contains("whatsapp")) {
             return true;
