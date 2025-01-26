@@ -39,7 +39,7 @@ public class EntryResource {
     @Path("/{entryId}")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     @Transactional
-    public RestResponse<byte[]> downloadEntry(@PathParam("entryId") String entryId, @QueryParam("download") boolean download) {
+    public RestResponse<byte[]> downloadEntry(@PathParam("entryId") String entryId, @QueryParam("download") boolean download, @HeaderParam(value = "User-Agent") String userAgent) {
         Entry entry = Entry.findById(entryId);
 
         if(entry == null) {
@@ -47,7 +47,7 @@ public class EntryResource {
         }
 
         String dispositionType = DISPOSITION_INLINE;
-        if(download) {
+        if(download || entryService.isLinkPreview(userAgent)) {
             dispositionType = DISPOSITION_ATTACHMENT;
         }
 

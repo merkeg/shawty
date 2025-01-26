@@ -7,6 +7,7 @@ import de.merkeg.shawty.entry.rest.NewEntryResponse;
 import de.merkeg.shawty.user.User;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
@@ -106,6 +107,18 @@ public class EntryService {
 
         s3Client.deleteObject(req);
 
+    }
+
+    @RequestScoped
+    public boolean isLinkPreview(String userAgent) {
+        if(userAgent.toLowerCase().contains("whatsapp")) {
+            return true;
+        }
+
+        if(userAgent.toLowerCase().contains("telegram")) {
+            return true;
+        }
+        return false;
     }
 
 }
