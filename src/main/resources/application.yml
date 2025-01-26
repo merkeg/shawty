@@ -1,2 +1,21 @@
-greeting:
-  message: "hello"
+app:
+  bucket: ${AWS_S3_BUCKET:shawty}
+  base-url: ${BASE_URL}
+quarkus:
+  log:
+    category:
+      "de.merkeg.shawty":
+        level: ${LOG_LEVEL:INFO}
+  hibernate-orm:
+    database:
+      generation: update
+  datasource:
+    db-kind: ${DB_TYPE:mariadb}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    jdbc:
+      url: jdbc:mariadb://${DB_HOST}:${DB_PORT:3306}/${DB_DATABASE}
+  s3:
+    endpoint-override: ${AWS_S3_URL}
+    aws:
+      region: ${AWS_REGION}
