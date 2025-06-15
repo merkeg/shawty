@@ -14,9 +14,12 @@ quarkus:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     jdbc:
-      url: jdbc:mariadb://${DB_HOST}:${DB_PORT:3306}/${DB_DATABASE}
+      url: jdbc:${DB_TYPE:mariadb}://${DB_HOST}:${DB_PORT:3306}/${DB_DATABASE}
   s3:
     endpoint-override: ${AWS_S3_URL}
-    path-style-access: true
+    path-style-access: ${AWS_S3_PATH_STYLE_OVERRIDE:true}
     aws:
       region: ${AWS_REGION}
+  http:
+    limits:
+      max-body-size: ${MAX_BODY_SIZE:1G}

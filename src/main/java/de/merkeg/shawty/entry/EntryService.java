@@ -7,13 +7,14 @@ import de.merkeg.shawty.entry.rest.NewEntryResponse;
 import de.merkeg.shawty.user.User;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.NotFoundException;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.validator.routines.UrlValidator;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -21,7 +22,7 @@ import software.amazon.awssdk.services.s3.model.*;
 
 import java.net.URI;
 import java.net.URLConnection;
-import java.nio.file.Files;
+import java.util.Arrays;
 
 @ApplicationScoped
 public class EntryService {
@@ -38,9 +39,31 @@ public class EntryService {
     @Inject
     EntryInfo.Mapper entryInfoMapper;
 
+    private static final String[] PREVIEW_AGENTS = {
+            "whatsapp",
+            "telegram",
+            "signal",
+            "twitter",
+            "facebook",
+            "linkedinbot",
+            "slackbot",
+            "discordbot",
+            "googlebot",
+            "bingbot",
+            "applebot",
+            "yahoo",
+            "pinterest",
+            "embedly",
+            "quora link preview",
+            "outbrain",
+            "facebookexternalhit",
+            "facebot",
+            "ia_archiver"
+    };
+
 
     @Transactional
-    public Entry createEntry(@Valid NewEntryRequest req) {
+    public Entry createFileEntry(@Valid NewEntryRequest req) {
 
         String extension = FilenameUtils.getExtension(req.getFilename());
 
@@ -48,6 +71,7 @@ public class EntryService {
                 .originalFilename(req.getFilename())
                 .extension(extension)
                 .uploader((User) securityIdentity.getPrincipal())
+                .type(EntryType.FILE)
                 .build();
 
         entry.persist();
@@ -67,6 +91,24 @@ public class EntryService {
         }
         return entry;
 
+    }
+
+    @Transactional
+    public Entry createUrlEntry(String url) {
+        UrlValidator urlValidator = new UrlValidator();
+
+        if(!urlValidator.isValid(url)) {
+            throw new BadRequestException("Invalid URL");
+        }
+
+        Entry entry = Entry.builder()
+                .url(url)
+                .uploader((User) securityIdentity.getPrincipal())
+                .type(EntryType.URL)
+                .build();
+
+        entry.persist();
+        return entry;
     }
 
     public ResponseBytes<GetObjectResponse> getEntryBytes(Entry entry) {
@@ -110,14 +152,17 @@ public class EntryService {
     }
 
     public boolean isLinkPreview(String userAgent) {
-        if(userAgent.toLowerCase().contains("whatsapp")) {
+        if (userAgent == null || userAgent.isEmpty()) {
+            return false;
+        }
+        String lower = userAgent.toLowerCase().trim();
+        // Prüfe auf bekannte Preview Agenten
+        boolean matchesKnownAgents = Arrays.stream(PREVIEW_AGENTS).anyMatch(lower::contains);
+        if (matchesKnownAgents) {
             return true;
         }
-
-        if(userAgent.toLowerCase().contains("telegram")) {
-            return true;
-        }
-        return false;
+        // Prüfe allgemein auf typische Crawler/Spider/Bot Keywords
+        return lower.contains("bot") || lower.contains("crawler") || lower.contains("spider") || lower.contains("preview");
     }
 
 }

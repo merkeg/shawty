@@ -25,6 +25,7 @@ dependencies {
     implementation 'io.quarkus:quarkus-hibernate-orm'
     implementation "io.quarkus:quarkus-security"
     implementation 'commons-io:commons-io:2.14.0'
+    implementation 'commons-validator:commons-validator:1.9.0'
 
     implementation 'org.mapstruct:mapstruct:1.6.2'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.2'

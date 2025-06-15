@@ -1,0 +1,23 @@
+version: '3.7'
+services:
+  db:
+    image: mariadb
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: mariadb
+      MARIADB_DATABASE: mariadb
+    volumes:
+      - ./db-data:/var/lib/mysql
+    ports:
+      - 3306:3306
+  minio:
+    image: minio/minio
+    entrypoint: sh
+    command: -c 'mkdir -p /export/shawty && /usr/bin/minio server /export'
+    volumes:
+      - ./s3-data:/export
+    environment:
+      MINIO_ACCESS_KEY: s3-access-key
+      MINIO_SECRET_KEY: s3-secret-key
+    ports:
+      - 9000:9000

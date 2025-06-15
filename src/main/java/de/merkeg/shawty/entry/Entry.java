@@ -5,6 +5,7 @@ import de.merkeg.shawty.util.ShortUUID;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.validator.constraints.Length;
 
 @Entity(name = "entry")
 @Getter
@@ -23,6 +24,12 @@ public class Entry extends PanacheEntityBase {
     private String s3Key;
 
     private String originalFilename;
+
+    @Enumerated(EnumType.STRING)
+    private EntryType type;
+
+    @Length(max = 65535)
+    private String url;
 
     @ManyToOne
     private User uploader;

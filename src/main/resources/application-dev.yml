@@ -9,26 +9,15 @@ quarkus:
   datasource:
     db-kind: mariadb
     devservices:
-      enabled: true
-      port: 3306
-      username: mariadb
-      password: mariadb
-      db-name: mariadb
-  aws:
-    devservices:
-      localstack:
-        port: 4566
+      enabled: false
+    username: root
+    password: mariadb
+    jdbc:
+      url: jdbc:mariadb://localhost:3306/mariadb
   s3:
-    devservices:
-      enabled: true
-      buckets:
-        - shawty
-      aws:
-        credentials:
-          type: static
-          static-provider:
-            access-key-id: test-key
-            secret-access-key: test-secret
+    endpoint-override: http://localhost:9000
+    aws:
+      region: eu-central-1
 app:
   bucket: shawty
   base-url: http://localhost:8080/

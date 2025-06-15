@@ -10,12 +10,7 @@ import java.util.UUID;
 
 public class StringUtil {
 
-    public static String shortenUUID(String uuid) {
-        // https://stackoverflow.com/questions/35511155/java-jpa-shorter-uuid
-        String uuid_string = uuid.replaceAll("-","");
-        BigInteger big = new BigInteger(uuid_string, 16);
-        return big.toString(36);
-    }
+    private static final String BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
     public static String longUniqueText(int amountUUID) {
         StringBuilder uuid_string = new StringBuilder();
@@ -25,6 +20,29 @@ public class StringUtil {
         }
         return uuid_string.toString();
     }
+
+
+    public static String shortenUUID(String uuid) {
+        String uuidString = uuid.replaceAll("-", "");
+        BigInteger bigInt = new BigInteger(uuidString, 16);
+        return toBase62(bigInt);
+    }
+
+    private static String toBase62(BigInteger number) {
+        StringBuilder sb = new StringBuilder();
+        BigInteger base = BigInteger.valueOf(62);
+        if (number.equals(BigInteger.ZERO)) {
+            return "0";
+        }
+        while (number.compareTo(BigInteger.ZERO) > 0) {
+            BigInteger[] divmod = number.divideAndRemainder(base);
+            number = divmod[0];
+            int remainder = divmod[1].intValue();
+            sb.append(BASE62.charAt(remainder));
+        }
+        return sb.reverse().toString();
+    }
+
 
     @SneakyThrows
     public static String hashString(String s) {
