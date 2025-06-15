@@ -1,17 +1,21 @@
 # shawty
 
 ## Environment
-| Environment   | Description                                  | 
-|---------------|----------------------------------------------|
-| LOG_LEVEL     | Log level for app (def: INFO)                |
-| AWS_S3_URL    | URL Override for local instances             |
-| AWS_REGION    | Region of the instance                       |
-| AWS_S3_BUCKET | Name of the Bucket                           |
-| BASE_URL      | Base url of the app, used in link generation |
-| DB_TYPE       | Type of Database (def: mariadb)              |
-| DB_HOST       | Host                                         |
-| DB_PORT       | Port (def: 3306)                             |
-| DB_DATABASE   | Database to use                              |
-| DB_USERNAME   | Username                                     |
-| DB_PASSWORD   | Password                                     |
+| Name                    | Description                          | Example Value                      | Default Value |
+|:------------------------|-------------------------------------|------------------------------------|---------------|
+| AWS_S3_BUCKET           | S3 bucket name                      | shawty                             | shawty        |
+| BASE_URL                | Base URL for the application        | https://example.com                | -             |
+| LOG_LEVEL               | Logging level                       | DEBUG                              | INFO          |
+| DB_TYPE                 | Type of database                    | mariadb                            | mariadb       |
+| DB_USERNAME             | Database username                   | user123                            | -             |
+| DB_PASSWORD             | Database password                   | pass123                            | -             |
+| DB_HOST                 | Database host                       | localhost                          | -             |
+| DB_PORT                 | Database port                       | 3306                               | 3306          |
+| DB_DATABASE             | Name of the database                | mydatabase                         | -             |
+| AWS_S3_URL             | S3 endpoint URL                     | https://s3.example.com            | -             |
+| AWS_S3_PATH_STYLE_OVERRIDE | Path style access for S3        | true                               | true          |
+| AWS_REGION              | AWS region for S3                  | eu-central-1                       | -             |
+| MAX_BODY_SIZE           | Maximum body size for HTTP requests | 2G                                 | 1G            |
+| AWS_ACCESS_KEY_ID      | AWS access key ID                   | AKIAEXAMPLE                       | -             |
+| AWS_SECRET_ACCESS_KEY   | AWS secret access key               | wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY | -             |
 
