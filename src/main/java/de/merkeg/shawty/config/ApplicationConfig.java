@@ -4,6 +4,8 @@ import de.merkeg.shawty.filestore.StorageType;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 
+import java.util.Optional;
+
 @ConfigMapping(prefix = "app")
 public interface ApplicationConfig {
     String bucket();
@@ -14,4 +16,6 @@ public interface ApplicationConfig {
 
     @WithDefault("/var/shawty/files")
     String localStoragePath();
+
+    Optional<String> adminApiKey();
 }

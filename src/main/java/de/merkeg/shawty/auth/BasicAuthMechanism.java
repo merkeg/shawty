@@ -35,6 +35,9 @@ public class BasicAuthMechanism implements HttpAuthenticationMechanism, Authenti
     @Inject
     ApiKeyService apiKeyService;
 
+    @Inject
+    AdminApiKeyAuthenticator adminApiKeyAuthenticator;
+
     @Override
     public Uni<SecurityIdentity> authenticate(RoutingContext context, IdentityProviderManager identityProviderManager) {
         String apiKey = extractApiKey(context);
@@ -43,21 +46,30 @@ public class BasicAuthMechanism implements HttpAuthenticationMechanism, Authenti
         }
 
         return Uni.createFrom().emitter(uniEmitter -> {
-            securityExecutor.executeBlocking(() ->
-                    apiKeyService.findKey(de.merkeg.shawty.util.StringUtil.hashString(apiKey))
-            ).subscribe().with(apiKeyEntity -> {
+            securityExecutor.executeBlocking(() -> {
+                // Zuerst ADMIN_API_KEY prüfen (in-memory, kein DB-Lookup)
+                var adminIdentity = adminApiKeyAuthenticator.authenticate(apiKey);
+                if (adminIdentity.isPresent()) {
+                    return adminIdentity.get();
+                }
+                // Normaler DB-Lookup
+                ApiKey apiKeyEntity = apiKeyService.findKey(de.merkeg.shawty.util.StringUtil.hashString(apiKey));
                 if (apiKeyEntity == null) {
                     log.debug("API Key via Basic Auth not found");
-                    uniEmitter.fail(new UnauthorizedException("Invalid API Key"));
-                    return;
+                    return null;
                 }
-
                 User user = apiKeyEntity.getUser();
-                uniEmitter.complete(QuarkusSecurityIdentity.builder()
+                return (io.quarkus.security.identity.SecurityIdentity) QuarkusSecurityIdentity.builder()
                         .setPrincipal(user)
                         .addRoles(new HashSet<>(user.getAllRoleNames()))
-                        .build());
-            });
+                        .build();
+            }).subscribe().with(identity -> {
+                if (identity == null) {
+                    uniEmitter.fail(new UnauthorizedException("Invalid API Key"));
+                } else {
+                    uniEmitter.complete(identity);
+                }
+            }, uniEmitter::fail);
         });
     }
 

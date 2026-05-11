@@ -41,10 +41,10 @@ public class UserService {
             return;
         }
 
-        User adminUser = createUser("ADMIN", Role.admin);
-        String apiKey = createApiKey(adminUser);
+        User adminUser = this.createUser("ADMIN", Role.admin);
+        String apiKey = this.createApiKey(adminUser);
 
-        log.info("!!! First Application startup. Created ADMIN user. Api Key: '{}' !!!!", apiKey);
+        log.info("First Application startup. Created ADMIN user. Api Key: '{}'", apiKey);
 
     }
 }

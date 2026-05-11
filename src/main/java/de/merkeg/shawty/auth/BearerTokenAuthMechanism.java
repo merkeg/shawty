@@ -33,6 +33,9 @@ public class BearerTokenAuthMechanism implements HttpAuthenticationMechanism, Au
     @Inject
     ApiKeyService apiKeyService;
 
+    @Inject
+    AdminApiKeyAuthenticator adminApiKeyAuthenticator;
+
     @Override
     public Uni<SecurityIdentity> authenticate(RoutingContext context, IdentityProviderManager identityProviderManager) {
         String authorizationHeader = context.request().getHeader("Authorization");
@@ -44,21 +47,29 @@ public class BearerTokenAuthMechanism implements HttpAuthenticationMechanism, Au
 
         return Uni.createFrom().emitter(uniEmitter -> {
             securityExecutor.executeBlocking(() -> {
-                return apiKeyService.findKey(de.merkeg.shawty.util.StringUtil.hashString(key));
-            }).subscribe().with(apiKey -> {
-               if(apiKey == null) {
-                   log.debug("Api Key not found {}", key);
-                   uniEmitter.fail(new UnauthorizedException("Invalid Api Key"));
-                   return;
-               }
-
+                // Zuerst ADMIN_API_KEY prüfen (in-memory, kein DB-Lookup)
+                var adminIdentity = adminApiKeyAuthenticator.authenticate(key);
+                if (adminIdentity.isPresent()) {
+                    return adminIdentity.get();
+                }
+                // Normaler DB-Lookup
+                ApiKey apiKey = apiKeyService.findKey(de.merkeg.shawty.util.StringUtil.hashString(key));
+                if (apiKey == null) {
+                    log.debug("Api Key not found {}", key);
+                    return null;
+                }
                 User user = apiKey.getUser();
-
-                uniEmitter.complete(QuarkusSecurityIdentity.builder()
+                return (io.quarkus.security.identity.SecurityIdentity) QuarkusSecurityIdentity.builder()
                         .setPrincipal(user)
                         .addRoles(new HashSet<>(user.getAllRoleNames()))
-                        .build());
-            });
+                        .build();
+            }).subscribe().with(identity -> {
+                if (identity == null) {
+                    uniEmitter.fail(new UnauthorizedException("Invalid Api Key"));
+                } else {
+                    uniEmitter.complete(identity);
+                }
+            }, uniEmitter::fail);
         });
     }
 

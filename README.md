@@ -26,6 +26,16 @@ Authorization: Basic <base64(anyuser:<api-key>)>
 
 In Dropshare, configure a custom connection with Basic Auth or Bearer Token and use the generated API key as the password.
 
+### Admin API Key
+
+By setting the `ADMIN_API_KEY` environment variable you can define a static, always-valid admin key. It is checked **in-memory** – it is never stored in the database. This is useful for scripting, automated deployments or when you don't have access to the generated key from the startup log.
+
+```bash
+ADMIN_API_KEY=my-super-secret-admin-key
+```
+
+The admin key works with both Bearer and Basic Auth and grants full admin permissions.
+
 ## Deleting Entries
 
 Two ways to delete an uploaded entry exist:
@@ -37,11 +47,12 @@ Two ways to delete an uploaded entry exist:
 
 ### General
 
-| Variable        | Description                        | Example                   | Default |
-|:----------------|------------------------------------|---------------------------|---------|
-| `BASE_URL`      | Public base URL of the application | `https://s.example.com`   | –       |
-| `LOG_LEVEL`     | Log level                          | `DEBUG`                   | `INFO`  |
-| `MAX_BODY_SIZE` | Maximum HTTP body size             | `5G`                      | `1G`    |
+| Variable        | Description                                       | Example                 | Default |
+|:----------------|---------------------------------------------------|-------------------------|---------|
+| `BASE_URL`      | Public base URL of the application                | `https://s.example.com` | –       |
+| `ADMIN_API_KEY` | Static admin API key, checked in-memory (optional)| `my-secret-key`         | –       |
+| `LOG_LEVEL`     | Log level                                         | `DEBUG`                 | `INFO`  |
+| `MAX_BODY_SIZE` | Maximum HTTP body size                            | `5G`                    | `1G`    |
 
 ---
 
