@@ -12,10 +12,12 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.StreamingOutput;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jboss.resteasy.reactive.RestResponse;
 
+import java.io.InputStream;
 import java.net.URI;
 
 @Path("/")
@@ -103,22 +105,18 @@ public class EntryResource {
         // ── Range request (partial content) ───────────────────────────────────
         if (rangeHeader != null && rangeHeader.startsWith("bytes=") && totalSize > 0) {
             try {
-                String rangeSpec = rangeHeader.substring(6); // strip "bytes="
-                // Only handle first range (multi-range not needed for video)
+                String rangeSpec = rangeHeader.substring(6);
                 String firstRange = rangeSpec.split(",")[0].trim();
 
                 long start, end;
                 if (firstRange.startsWith("-")) {
-                    // bytes=-N  →  last N bytes
                     long suffix = Long.parseLong(firstRange.substring(1));
                     start = Math.max(0, totalSize - suffix);
                     end = totalSize - 1;
                 } else if (firstRange.endsWith("-")) {
-                    // bytes=N-  →  from N to end
                     start = Long.parseLong(firstRange.substring(0, firstRange.length() - 1));
                     end = totalSize - 1;
                 } else {
-                    // bytes=N-M
                     String[] parts = firstRange.split("-");
                     start = Long.parseLong(parts[0]);
                     end = Long.parseLong(parts[1]);
@@ -126,41 +124,47 @@ public class EntryResource {
 
                 end = Math.min(end, totalSize - 1);
                 if (start > end || start < 0) {
-                    return Response.status(416)
-                            .header("Content-Range", "bytes */" + totalSize)
-                            .build();
+                    return Response.status(416).header("Content-Range", "bytes */" + totalSize).build();
                 }
 
-                StoredFile chunk = entryService.getEntryBytesRange(entry, start, end);
-                String contentType = resolveContentType(chunk.contentType());
+                final long rangeStart = start;
+                final long rangeEnd = end;
+                String contentType = resolveContentType(entryService.getEntryBytes(entry).contentType());
+                StreamingOutput stream = output -> {
+                    try (InputStream in = entryService.openEntryStream(entry, rangeStart, rangeEnd)) {
+                        in.transferTo(output);
+                    }
+                };
 
                 return Response.status(206)
                         .header("Content-Type", contentType)
                         .header("Content-Range", "bytes " + start + "-" + end + "/" + totalSize)
-                        .header("Content-Length", chunk.content().length)
+                        .header("Content-Length", end - start + 1)
                         .header("Accept-Ranges", "bytes")
                         .header("Content-Disposition", disposition)
-                        .entity(chunk.content())
+                        .entity(stream)
                         .build();
 
             } catch (NumberFormatException e) {
                 log.debug("Unparseable Range header: {}", rangeHeader);
-                // fall through to full response
             }
         }
 
-        // ── Full response ──────────────────────────────────────────────────────
-        StoredFile storedFile = entryService.getEntryBytes(entry);
-        String contentType = resolveContentType(storedFile.contentType());
+        // ── Full streaming response ────────────────────────────────────────────
+        StoredFile meta = entryService.getEntryBytes(entry);
+        String contentType = resolveContentType(meta.contentType());
+        StreamingOutput stream = output -> {
+            try (InputStream in = entryService.openEntryStream(entry)) {
+                in.transferTo(output);
+            }
+        };
 
-        Response.ResponseBuilder builder = Response.ok(storedFile.content())
+        Response.ResponseBuilder builder = Response.ok(stream)
                 .header("Content-Type", contentType)
                 .header("Accept-Ranges", "bytes")
                 .header("Content-Disposition", disposition);
 
-        if (totalSize > 0) {
-            builder.header("Content-Length", totalSize);
-        }
+        if (totalSize > 0) builder.header("Content-Length", totalSize);
 
         return builder.build();
     }

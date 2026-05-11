@@ -10,6 +10,8 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 
 @ApplicationScoped
 @S3Storage
@@ -33,31 +35,45 @@ public class S3FileStore implements FileStore {
 
     @Override
     public StoredFile get(String key) {
-        GetObjectRequest request = GetObjectRequest.builder()
+        var response = s3Client.getObjectAsBytes(GetObjectRequest.builder()
                 .bucket(applicationConfig.bucket())
                 .key(key)
-                .build();
-        var response = s3Client.getObjectAsBytes(request);
+                .build());
         return new StoredFile(response.asByteArray(), response.response().contentType());
     }
 
     @Override
-    public StoredFile getRange(String key, long start, long end) {
-        GetObjectRequest request = GetObjectRequest.builder()
+    public InputStream openStream(String key) throws IOException {
+        return s3Client.getObject(GetObjectRequest.builder()
+                .bucket(applicationConfig.bucket())
+                .key(key)
+                .build());
+    }
+
+    @Override
+    public InputStream openStream(String key, long start, long end) throws IOException {
+        return s3Client.getObject(GetObjectRequest.builder()
                 .bucket(applicationConfig.bucket())
                 .key(key)
                 .range("bytes=" + start + "-" + end)
-                .build();
-        var response = s3Client.getObjectAsBytes(request);
+                .build());
+    }
+
+    @Override
+    public StoredFile getRange(String key, long start, long end) {
+        var response = s3Client.getObjectAsBytes(GetObjectRequest.builder()
+                .bucket(applicationConfig.bucket())
+                .key(key)
+                .range("bytes=" + start + "-" + end)
+                .build());
         return new StoredFile(response.asByteArray(), response.response().contentType());
     }
 
     @Override
     public void delete(String key) {
-        DeleteObjectRequest request = DeleteObjectRequest.builder()
+        s3Client.deleteObject(DeleteObjectRequest.builder()
                 .bucket(applicationConfig.bucket())
                 .key(key)
-                .build();
-        s3Client.deleteObject(request);
+                .build());
     }
 }

@@ -6,10 +6,11 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.input.BoundedInputStream;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.InputStream;
 import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,40 +39,44 @@ public class LocalFileStore implements FileStore {
     @Override
     public StoredFile get(String key) {
         Path target = resolveKey(key);
-        if (!Files.exists(target)) {
-            throw new NotFoundException("File not found in local store: " + key);
-        }
+        if (!Files.exists(target)) throw new NotFoundException("File not found in local store: " + key);
         try {
-            byte[] content = Files.readAllBytes(target);
-            return new StoredFile(content, guessContentType(key));
+            return new StoredFile(Files.readAllBytes(target), guessContentType(key));
         } catch (IOException e) {
             throw new InternalServerErrorException("Failed to read file from local store: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public StoredFile getRange(String key, long start, long end) {
+    public InputStream openStream(String key) throws IOException {
         Path target = resolveKey(key);
-        if (!Files.exists(target)) {
-            throw new NotFoundException("File not found in local store: " + key);
-        }
-        try (RandomAccessFile raf = new RandomAccessFile(target.toFile(), "r")) {
-            long length = end - start + 1;
-            byte[] buffer = new byte[(int) length];
-            raf.seek(start);
-            raf.readFully(buffer);
-            return new StoredFile(buffer, guessContentType(key));
+        if (!Files.exists(target)) throw new NotFoundException("File not found in local store: " + key);
+        return Files.newInputStream(target);
+    }
+
+    @Override
+    public InputStream openStream(String key, long start, long end) throws IOException {
+        Path target = resolveKey(key);
+        if (!Files.exists(target)) throw new NotFoundException("File not found in local store: " + key);
+        InputStream base = Files.newInputStream(target);
+        base.skipNBytes(start);
+        return BoundedInputStream.builder().setInputStream(base).setMaxCount(end - start + 1).get();
+    }
+
+    @Override
+    public StoredFile getRange(String key, long start, long end) {
+        try (InputStream stream = openStream(key, start, end)) {
+            return new StoredFile(stream.readAllBytes(), guessContentType(key));
         } catch (IOException e) {
-            throw new InternalServerErrorException("Failed to read file range from local store: " + e.getMessage(), e);
+            throw new InternalServerErrorException("Failed to read file range: " + e.getMessage(), e);
         }
     }
 
     @Override
     public void delete(String key) {
-        Path target = resolveKey(key);
         try {
-            Files.deleteIfExists(target);
-            log.debug("Deleted local file: {}", target);
+            Files.deleteIfExists(resolveKey(key));
+            log.debug("Deleted local file: {}", resolveKey(key));
         } catch (IOException e) {
             throw new InternalServerErrorException("Failed to delete file from local store: " + e.getMessage(), e);
         }

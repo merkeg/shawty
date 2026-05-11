@@ -16,8 +16,12 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
+import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.UriBuilder;
+
+import java.io.IOException;
+import java.io.InputStream;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.validator.routines.UrlValidator;
 
@@ -94,6 +98,22 @@ public class EntryService {
 
     public StoredFile getEntryBytesRange(Entry entry, long start, long end) {
         return fileStore.getRange(entry.getStorageKey(), start, end);
+    }
+
+    public InputStream openEntryStream(Entry entry) {
+        try {
+            return fileStore.openStream(entry.getStorageKey());
+        } catch (IOException e) {
+            throw new InternalServerErrorException("Failed to open stream: " + e.getMessage(), e);
+        }
+    }
+
+    public InputStream openEntryStream(Entry entry, long start, long end) {
+        try {
+            return fileStore.openStream(entry.getStorageKey(), start, end);
+        } catch (IOException e) {
+            throw new InternalServerErrorException("Failed to open stream range: " + e.getMessage(), e);
+        }
     }
 
     // ── Response builder ───────────────────────────────────────────────────────
