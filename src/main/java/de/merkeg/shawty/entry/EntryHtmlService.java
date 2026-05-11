@@ -53,6 +53,7 @@ public class EntryHtmlService {
 
     public String buildPage(Entry entry) {
         String base        = applicationConfig.baseUrl();
+        if (!base.endsWith("/")) base = base + "/";
         String pageUrl     = base + entry.getId();
         String rawUrl      = base + entry.getId() + "/raw";
         String downloadUrl = pageUrl + "?download=true";
