@@ -7,17 +7,17 @@ quarkus:
     database:
       generation: update
   datasource:
-    db-kind: mariadb
+    db-kind: postgresql
     devservices:
       enabled: false
-    username: root
-    password: mariadb
+    username: shawty
+    password: shawty
     jdbc:
-      url: jdbc:mariadb://localhost:3306/mariadb
+      url: jdbc:postgresql://localhost:5432/shawty
   s3:
-    endpoint-override: http://localhost:9000
-    aws:
-      region: eu-central-1
+    devservices:
+      enabled: false
 app:
-  bucket: shawty
   base-url: http://localhost:8080/
+  storage: LOCAL
+  local-storage-path: /tmp/shawty

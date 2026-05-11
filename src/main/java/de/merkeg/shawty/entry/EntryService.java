@@ -4,6 +4,8 @@ import de.merkeg.shawty.config.ApplicationConfig;
 import de.merkeg.shawty.entry.rest.EntryInfo;
 import de.merkeg.shawty.entry.rest.NewEntryRequest;
 import de.merkeg.shawty.entry.rest.NewEntryResponse;
+import de.merkeg.shawty.filestore.FileStore;
+import de.merkeg.shawty.filestore.StoredFile;
 import de.merkeg.shawty.user.User;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -11,14 +13,9 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.BadRequestException;
-import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.NotFoundException;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.validator.routines.UrlValidator;
-import software.amazon.awssdk.core.ResponseBytes;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.*;
 
 import java.net.URI;
 import java.net.URLConnection;
@@ -28,7 +25,7 @@ import java.util.Arrays;
 public class EntryService {
 
     @Inject
-    S3Client s3Client;
+    FileStore fileStore;
 
     @Inject
     ApplicationConfig applicationConfig;
@@ -76,21 +73,17 @@ public class EntryService {
 
         entry.persist();
 
-        String s3Key = entry.getId() + "." + extension;
-        entry.setS3Key(s3Key);
+        String storageKey = entry.getId() + "." + extension;
+        entry.setStorageKey(storageKey);
 
-        PutObjectRequest request = PutObjectRequest.builder()
-                .bucket(applicationConfig.bucket())
-                .key(s3Key)
-                .contentType(URLConnection.guessContentTypeFromName(req.getFilename()))
-                .build();
-        PutObjectResponse response = s3Client.putObject(request, RequestBody.fromFile(req.getFile()));
-
-        if(response == null) {
-            throw new InternalServerErrorException("Failed uploading file");
+        String contentType = URLConnection.guessContentTypeFromName(req.getFilename());
+        if (contentType == null) {
+            contentType = "application/octet-stream";
         }
-        return entry;
 
+        fileStore.store(storageKey, req.getFile(), contentType);
+
+        return entry;
     }
 
     @Transactional
@@ -111,13 +104,8 @@ public class EntryService {
         return entry;
     }
 
-    public ResponseBytes<GetObjectResponse> getEntryBytes(Entry entry) {
-        GetObjectRequest request = GetObjectRequest.builder()
-                .bucket(applicationConfig.bucket())
-                .key(entry.getS3Key())
-                .build();
-
-        return s3Client.getObjectAsBytes(request);
+    public StoredFile getEntryBytes(Entry entry) {
+        return fileStore.get(entry.getStorageKey());
     }
 
     public NewEntryResponse buildEntryResponse(Entry entry) {
@@ -142,13 +130,10 @@ public class EntryService {
             throw new NotFoundException("Entry not found");
         }
 
+        if (entry.getStorageKey() != null) {
+            fileStore.delete(entry.getStorageKey());
+        }
         entry.delete();
-        DeleteObjectRequest req = DeleteObjectRequest.builder()
-                .bucket(applicationConfig.bucket())
-                .key(entry.getS3Key()).build();
-
-        s3Client.deleteObject(req);
-
     }
 
     public boolean isLinkPreview(String userAgent) {
@@ -156,12 +141,10 @@ public class EntryService {
             return false;
         }
         String lower = userAgent.toLowerCase().trim();
-        // Prüfe auf bekannte Preview Agenten
         boolean matchesKnownAgents = Arrays.stream(PREVIEW_AGENTS).anyMatch(lower::contains);
         if (matchesKnownAgents) {
             return true;
         }
-        // Prüfe allgemein auf typische Crawler/Spider/Bot Keywords
         return lower.contains("bot") || lower.contains("crawler") || lower.contains("spider") || lower.contains("preview");
     }
 

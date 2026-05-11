@@ -21,7 +21,7 @@ public class Entry extends PanacheEntityBase {
 
     private String extension;
 
-    private String s3Key;
+    private String storageKey;
 
     private String originalFilename;
 

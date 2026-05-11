@@ -1,6 +1,7 @@
 package de.merkeg.shawty.util;
 
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -8,6 +9,7 @@ import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.UUID;
 
+@Slf4j
 public class StringUtil {
 
     private static final String BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -16,7 +18,8 @@ public class StringUtil {
         StringBuilder uuid_string = new StringBuilder();
         for (int i = 0; i < amountUUID; i++) {
             UUID uuid = UUID.randomUUID();
-            uuid_string.append(shortenUUID(uuid.toString()));
+            String shorten = shortenUUID(uuid.toString());
+            uuid_string.append(shorten);
         }
         return uuid_string.toString();
     }

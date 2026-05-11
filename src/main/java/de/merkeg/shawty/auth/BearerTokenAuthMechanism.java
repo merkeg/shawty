@@ -70,6 +70,6 @@ public class BearerTokenAuthMechanism implements HttpAuthenticationMechanism, Au
     @Override
     public boolean check(RoutingContext context) {
         String authorization = context.request().getHeader("Authorization");
-        return !StringUtil.isNullOrEmpty(authorization);
+        return !StringUtil.isNullOrEmpty(authorization) && authorization.startsWith("Bearer ");
     }
 }

@@ -23,6 +23,9 @@ public class AuthMechanism implements HttpAuthenticationMechanism {
     BearerTokenAuthMechanism bearerTokenAuthMechanism;
 
     @Inject
+    BasicAuthMechanism basicAuthMechanism;
+
+    @Inject
     NoAuthMechanism noAuthMechanism;
 
     @Override
@@ -36,9 +39,11 @@ public class AuthMechanism implements HttpAuthenticationMechanism {
     }
 
     public HttpAuthenticationMechanism selectMechanism(RoutingContext context) {
-
-        if(bearerTokenAuthMechanism.check(context)) {
+        if (bearerTokenAuthMechanism.check(context)) {
             return bearerTokenAuthMechanism;
+        }
+        if (basicAuthMechanism.check(context)) {
+            return basicAuthMechanism;
         }
         return noAuthMechanism;
     }

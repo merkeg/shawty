@@ -12,7 +12,7 @@ import lombok.*;
 import java.security.Principal;
 import java.util.List;
 
-@Entity(name = "user")
+@Entity(name = "app_user")
 @Getter
 @Setter
 @AllArgsConstructor

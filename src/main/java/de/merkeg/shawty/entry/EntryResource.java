@@ -3,17 +3,17 @@ package de.merkeg.shawty.entry;
 import de.merkeg.shawty.entry.rest.NewEntryRequest;
 import de.merkeg.shawty.entry.rest.NewEntryResponse;
 import de.merkeg.shawty.entry.rest.NewUrlShortenRequest;
+import de.merkeg.shawty.filestore.StoredFile;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jboss.resteasy.reactive.RestResponse;
-import software.amazon.awssdk.core.ResponseBytes;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 import java.net.URI;
 
@@ -51,7 +51,10 @@ public class EntryResource {
     @Path("/{entryId}")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     @Transactional
-    public RestResponse<?> getEntry(@PathParam("entryId") String entryId, @QueryParam("download") boolean download, @HeaderParam(value = "User-Agent") String userAgent) {
+    public RestResponse<?> getEntry(
+            @PathParam("entryId") @Pattern(regexp = "[0-9A-Za-z]{1,22}", message = "Invalid entry ID") String entryId,
+            @QueryParam("download") boolean download,
+            @HeaderParam(value = "User-Agent") String userAgent) {
         Entry entry = Entry.findById(entryId);
 
         if(entry == null) {
@@ -77,10 +80,10 @@ public class EntryResource {
             dispositionType = DISPOSITION_ATTACHMENT;
         }
 
-        ResponseBytes<GetObjectResponse> bytes = entryService.getEntryBytes(entry);
-        return RestResponse.ResponseBuilder.ok(bytes.asByteArray())
+        StoredFile storedFile = entryService.getEntryBytes(entry);
+        return RestResponse.ResponseBuilder.ok(storedFile.content())
                 .header("Content-Disposition", dispositionType + "; filename=\"" + entry.getOriginalFilename() + "\"")
-                .header("Content-Type", bytes.response().contentType()).build();
+                .header("Content-Type", storedFile.contentType()).build();
     }
 
     @SneakyThrows
@@ -95,7 +98,8 @@ public class EntryResource {
     @DELETE
     @Path("/{entryId}")
     @Transactional
-    public RestResponse<Void> deleteEntry(@PathParam("entryId") String entryId) {
+    public RestResponse<Void> deleteEntry(
+            @PathParam("entryId") @Pattern(regexp = "[0-9A-Za-z]{1,22}", message = "Invalid entry ID") String entryId) {
         entryService.deleteEntry(entryId);
         return RestResponse.ok();
     }
