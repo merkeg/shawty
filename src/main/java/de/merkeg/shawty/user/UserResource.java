@@ -22,7 +22,7 @@ public class UserResource {
 
     @Path("api-key")
     @POST
-    @RolesAllowed("uploader")
+    @RolesAllowed({"uploader", "admin"})
     @Transactional
     public RestResponse<NewApiKeyResponse> createApiKey() {
 

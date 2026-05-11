@@ -9,5 +9,6 @@ public class NewEntryResponse {
 
     String accessUrl;
     String deletionUrl;
+    String deleteKey;
     EntryInfo entry;
 }

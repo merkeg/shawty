@@ -94,30 +94,50 @@ public class EntryResource {
             @PathParam("entryId") @Pattern(regexp = "[0-9A-Za-z]{1,22}", message = "Invalid entry ID") String entryId) {
 
         Entry entry = Entry.findById(entryId);
-        if (entry == null) {
-            throw new NotFoundException("File not found");
-        }
+        if (entry == null) throw new NotFoundException("File not found");
         return serveFile(entry, "inline");
     }
 
-    // ── Delete ─────────────────────────────────────────────────────────────────
+    // ── Delete endpoints ───────────────────────────────────────────────────────
 
+    /**
+     * Authenticated delete: uploader can delete own entries, admin can delete any entry.
+     */
     @DELETE
-    @Path("/{entryId}")
+    @Path("/api/entries/{entryId}")
     @Transactional
+    @RolesAllowed({"uploader", "admin"})
     public RestResponse<Void> deleteEntry(
             @PathParam("entryId") @Pattern(regexp = "[0-9A-Za-z]{1,22}", message = "Invalid entry ID") String entryId) {
         entryService.deleteEntry(entryId);
         return RestResponse.ok();
     }
 
+    /**
+     * Public delete via delete key – no authentication required.
+     * The delete key is returned when the entry was created.
+     */
+    @GET
+    @Path("/{entryId}/{deleteKey}")
+    @Transactional
+    public RestResponse<Void> deleteEntryByKey(
+            @PathParam("entryId")   @Pattern(regexp = "[0-9A-Za-z]{1,22}", message = "Invalid entry ID")   String entryId,
+            @PathParam("deleteKey") @Pattern(regexp = "[0-9A-Za-z]{1,44}", message = "Invalid delete key") String deleteKey) {
+        entryService.deleteEntryByKey(entryId, deleteKey);
+        return RestResponse.noContent();
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private RestResponse<byte[]> serveFile(Entry entry, String dispositionType) {
         StoredFile storedFile = entryService.getEntryBytes(entry);
+        String contentType = storedFile.contentType();
+        if (contentType != null && contentType.startsWith("text/") && !contentType.contains("charset")) {
+            contentType = contentType + "; charset=UTF-8";
+        }
         return RestResponse.ResponseBuilder.ok(storedFile.content())
                 .header("Content-Disposition", dispositionType + "; filename=\"" + entry.getOriginalFilename() + "\"")
-                .header("Content-Type", storedFile.contentType())
+                .header("Content-Type", contentType)
                 .build();
     }
 

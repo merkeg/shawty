@@ -33,6 +33,8 @@ public class Entry extends PanacheEntityBase {
     @Length(max = 65535)
     private String url;
 
+    private String deleteKeyHash;
+
     @ManyToOne
     private User uploader;
 }
