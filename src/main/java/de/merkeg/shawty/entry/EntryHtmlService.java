@@ -7,6 +7,7 @@ import io.quarkus.qute.RawString;
 import io.quarkus.qute.Template;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.UriBuilder;
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
 
@@ -54,9 +55,11 @@ public class EntryHtmlService {
     public String buildPage(Entry entry) {
         String base        = applicationConfig.baseUrl();
         if (!base.endsWith("/")) base = base + "/";
-        String pageUrl     = base + entry.getId();
-        String rawUrl      = base + entry.getId() + "/raw";
-        String downloadUrl = pageUrl + "?download=true";
+
+        UriBuilder entryUri = UriBuilder.fromUri(base).path(entry.getId());
+        String pageUrl     = entryUri.build().toString();
+        String rawUrl      = entryUri.clone().path("raw").build().toString();
+        String downloadUrl = entryUri.clone().queryParam("download", "true").build().toString();
 
         String contentType = URLConnection.guessContentTypeFromName(entry.getOriginalFilename());
         if (contentType == null) contentType = "application/octet-stream";
