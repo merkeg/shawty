@@ -61,7 +61,10 @@ public class EntryResource {
 
         Entry entry = Entry.findById(entryId);
         if (entry == null) {
-            throw new NotFoundException("File not found");
+            return RestResponse.ResponseBuilder
+                    .create(RestResponse.Status.NOT_FOUND, entryHtmlService.buildNotFoundPage())
+                    .header("Content-Type", "text/html; charset=UTF-8")
+                    .build();
         }
 
         if (entry.getType() == EntryType.URL) {

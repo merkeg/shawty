@@ -28,6 +28,7 @@ dependencies {
 
     implementation 'org.mapstruct:mapstruct:1.6.2'
     implementation 'io.quarkus:quarkus-rest-qute:3.35.2'
+    implementation 'org.commonmark:commonmark:0.22.0'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.2'
     implementation 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
 
