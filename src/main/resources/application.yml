@@ -12,11 +12,11 @@ quarkus:
     database:
       generation: update
   datasource:
-    db-kind: postgresql
+    db-kind: ${DB_KIND:postgresql}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     jdbc:
-      url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_DATABASE}
+      url: ${DB_URL:jdbc:${DB_KIND:postgresql}://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_DATABASE:shawty}}
   s3:
     # Endpoint für self-hosted S3 (z.B. MinIO): QUARKUS_S3_ENDPOINT_OVERRIDE=https://your-s3-host
     # Path-style access wird für die meisten self-hosted S3-Implementierungen benötigt

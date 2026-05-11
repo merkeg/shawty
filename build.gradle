@@ -20,6 +20,8 @@ dependencies {
     implementation 'io.quarkiverse.amazonservices:quarkus-amazon-s3'
     implementation 'software.amazon.awssdk:url-connection-client:2.29.11'
     implementation 'io.quarkus:quarkus-jdbc-postgresql'
+    implementation 'io.quarkus:quarkus-jdbc-mariadb:3.35.2'
+    implementation 'io.quarkiverse.jdbc:quarkus-jdbc-sqlite:3.0.11'
     implementation 'io.quarkus:quarkus-arc'
     implementation 'io.quarkus:quarkus-hibernate-orm'
     implementation "io.quarkus:quarkus-security"

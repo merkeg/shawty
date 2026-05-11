@@ -40,3 +40,5 @@ nb-configuration.xml
 # TLS Certificates
 .certs/
 localdeployment/*-data
+
+*.db

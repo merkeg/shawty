@@ -7,13 +7,11 @@ quarkus:
     database:
       generation: update
   datasource:
-    db-kind: postgresql
+    db-kind: sqlite
     devservices:
       enabled: false
-    username: shawty
-    password: shawty
     jdbc:
-      url: jdbc:postgresql://localhost:5432/shawty
+      url: jdbc:sqlite:/Users/merkeg/Documents/dev/java/shawty/shawty.db
   s3:
     devservices:
       enabled: false
