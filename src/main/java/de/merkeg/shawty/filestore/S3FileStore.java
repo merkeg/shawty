@@ -34,15 +34,6 @@ public class S3FileStore implements FileStore {
     }
 
     @Override
-    public StoredFile get(String key) {
-        var response = s3Client.getObjectAsBytes(GetObjectRequest.builder()
-                .bucket(applicationConfig.bucket())
-                .key(key)
-                .build());
-        return new StoredFile(response.asByteArray(), response.response().contentType());
-    }
-
-    @Override
     public InputStream openStream(String key) throws IOException {
         return s3Client.getObject(GetObjectRequest.builder()
                 .bucket(applicationConfig.bucket())
@@ -57,16 +48,6 @@ public class S3FileStore implements FileStore {
                 .key(key)
                 .range("bytes=" + start + "-" + end)
                 .build());
-    }
-
-    @Override
-    public StoredFile getRange(String key, long start, long end) {
-        var response = s3Client.getObjectAsBytes(GetObjectRequest.builder()
-                .bucket(applicationConfig.bucket())
-                .key(key)
-                .range("bytes=" + start + "-" + end)
-                .build());
-        return new StoredFile(response.asByteArray(), response.response().contentType());
     }
 
     @Override

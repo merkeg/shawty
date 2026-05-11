@@ -3,7 +3,6 @@ package de.merkeg.shawty.entry;
 import de.merkeg.shawty.entry.rest.NewEntryRequest;
 import de.merkeg.shawty.entry.rest.NewEntryResponse;
 import de.merkeg.shawty.entry.rest.NewUrlShortenRequest;
-import de.merkeg.shawty.filestore.StoredFile;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -19,6 +18,7 @@ import org.jboss.resteasy.reactive.RestResponse;
 
 import java.io.InputStream;
 import java.net.URI;
+import java.net.URLConnection;
 
 @Path("/")
 @Slf4j
@@ -58,20 +58,18 @@ public class EntryResource {
     @GET
     @Path("/{entryId}")
     @Transactional
-    public RestResponse<?> getEntry(
+    public Response getEntry(
             @PathParam("entryId") @Pattern(regexp = "[0-9A-Za-z]{1,22}", message = "Invalid entry ID") String entryId,
             @QueryParam("download") boolean download) {
 
         Entry entry = Entry.findById(entryId);
         if (entry == null) {
-            return RestResponse.ResponseBuilder
-                    .create(RestResponse.Status.NOT_FOUND, entryHtmlService.buildNotFoundPage())
-                    .header("Content-Type", "text/html; charset=UTF-8")
-                    .build();
+            String html = entryHtmlService.buildNotFoundPage();
+            return Response.status(404).entity(html).header("Content-Type", "text/html; charset=UTF-8").build();
         }
 
         if (entry.getType() == EntryType.URL) {
-            return redirectEntry(entry);
+            return redirectEntry(entry).toResponse();
         }
 
         if (download) {
@@ -79,10 +77,7 @@ public class EntryResource {
         }
 
         String html = entryHtmlService.buildPage(entry);
-        return RestResponse.ResponseBuilder
-                .ok(html)
-                .header("Content-Type", "text/html; charset=UTF-8")
-                .build();
+        return Response.ok(html).header("Content-Type", "text/html; charset=UTF-8").build();
     }
 
     /**
@@ -129,7 +124,6 @@ public class EntryResource {
 
                 final long rangeStart = start;
                 final long rangeEnd = end;
-                String contentType = resolveContentType(entryService.getEntryBytes(entry).contentType());
                 StreamingOutput stream = output -> {
                     try (InputStream in = entryService.openEntryStream(entry, rangeStart, rangeEnd)) {
                         in.transferTo(output);
@@ -137,7 +131,7 @@ public class EntryResource {
                 };
 
                 return Response.status(206)
-                        .header("Content-Type", contentType)
+                        .header("Content-Type", resolveContentType(entry))
                         .header("Content-Range", "bytes " + start + "-" + end + "/" + totalSize)
                         .header("Content-Length", end - start + 1)
                         .header("Accept-Ranges", "bytes")
@@ -151,8 +145,6 @@ public class EntryResource {
         }
 
         // ── Full streaming response ────────────────────────────────────────────
-        StoredFile meta = entryService.getEntryBytes(entry);
-        String contentType = resolveContentType(meta.contentType());
         StreamingOutput stream = output -> {
             try (InputStream in = entryService.openEntryStream(entry)) {
                 in.transferTo(output);
@@ -160,7 +152,7 @@ public class EntryResource {
         };
 
         Response.ResponseBuilder builder = Response.ok(stream)
-                .header("Content-Type", contentType)
+                .header("Content-Type", resolveContentType(entry))
                 .header("Accept-Ranges", "bytes")
                 .header("Content-Disposition", disposition);
 
@@ -200,20 +192,27 @@ public class EntryResource {
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
-    private RestResponse<byte[]> serveFile(Entry entry, String dispositionType) {
-        StoredFile storedFile = entryService.getEntryBytes(entry);
-        String contentType = resolveContentType(storedFile.contentType());
-        return RestResponse.ResponseBuilder.ok(storedFile.content())
+    private Response serveFile(Entry entry, String dispositionType) {
+        StreamingOutput stream = output -> {
+            try (InputStream in = entryService.openEntryStream(entry)) {
+                in.transferTo(output);
+            }
+        };
+        return Response.ok(stream)
+                .header("Content-Type", resolveContentType(entry))
                 .header("Content-Disposition", dispositionType + "; filename=\"" + entry.getOriginalFilename() + "\"")
-                .header("Content-Type", contentType)
+                .header("Content-Length", entry.getFileSize())
                 .build();
     }
 
-    private String resolveContentType(String contentType) {
-        if (contentType != null && contentType.startsWith("text/") && !contentType.contains("charset")) {
-            return contentType + "; charset=UTF-8";
+    private String resolveContentType(Entry entry) {
+        String ct = entry.getContentType();
+        if (ct == null || ct.isBlank()) {
+            ct = URLConnection.guessContentTypeFromName(entry.getOriginalFilename());
         }
-        return contentType;
+        if (ct == null) ct = "application/octet-stream";
+        if (ct.startsWith("text/") && !ct.contains("charset")) ct += "; charset=UTF-8";
+        return ct;
     }
 
     @SneakyThrows

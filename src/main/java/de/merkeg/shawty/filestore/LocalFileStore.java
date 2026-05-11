@@ -11,7 +11,6 @@ import org.apache.commons.io.input.BoundedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -37,17 +36,6 @@ public class LocalFileStore implements FileStore {
     }
 
     @Override
-    public StoredFile get(String key) {
-        Path target = resolveKey(key);
-        if (!Files.exists(target)) throw new NotFoundException("File not found in local store: " + key);
-        try {
-            return new StoredFile(Files.readAllBytes(target), guessContentType(key));
-        } catch (IOException e) {
-            throw new InternalServerErrorException("Failed to read file from local store: " + e.getMessage(), e);
-        }
-    }
-
-    @Override
     public InputStream openStream(String key) throws IOException {
         Path target = resolveKey(key);
         if (!Files.exists(target)) throw new NotFoundException("File not found in local store: " + key);
@@ -64,15 +52,6 @@ public class LocalFileStore implements FileStore {
     }
 
     @Override
-    public StoredFile getRange(String key, long start, long end) {
-        try (InputStream stream = openStream(key, start, end)) {
-            return new StoredFile(stream.readAllBytes(), guessContentType(key));
-        } catch (IOException e) {
-            throw new InternalServerErrorException("Failed to read file range: " + e.getMessage(), e);
-        }
-    }
-
-    @Override
     public void delete(String key) {
         try {
             Files.deleteIfExists(resolveKey(key));
@@ -84,10 +63,5 @@ public class LocalFileStore implements FileStore {
 
     private Path resolveKey(String key) {
         return Path.of(applicationConfig.localStoragePath()).resolve(key);
-    }
-
-    private String guessContentType(String key) {
-        String ct = URLConnection.guessContentTypeFromName(key);
-        return ct != null ? ct : "application/octet-stream";
     }
 }

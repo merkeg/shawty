@@ -11,6 +11,8 @@ import jakarta.ws.rs.core.UriBuilder;
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLConnection;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -61,7 +63,11 @@ public class EntryHtmlService {
         String rawUrl      = entryUri.clone().path("raw").build().toString();
         String downloadUrl = entryUri.clone().queryParam("download", "true").build().toString();
 
-        String contentType = URLConnection.guessContentTypeFromName(entry.getOriginalFilename());
+        String contentType = entry.getContentType();
+        if (contentType == null || contentType.isBlank()) {
+            // Fallback für Einträge vor der DB-Migration
+            contentType = URLConnection.guessContentTypeFromName(entry.getOriginalFilename());
+        }
         if (contentType == null) contentType = "application/octet-stream";
 
         boolean isImage = contentType.startsWith("image/");
@@ -147,10 +153,11 @@ public class EntryHtmlService {
     // ── Content loading ────────────────────────────────────────────────────────
 
     private TextContent loadTextContent(Entry entry) {
-        try {
-            byte[] bytes = fileStore.get(entry.getStorageKey()).content();
-            boolean truncated = bytes.length > MAX_PREVIEW_BYTES;
-            byte[] preview = truncated ? Arrays.copyOf(bytes, MAX_PREVIEW_BYTES) : bytes;
+        try (InputStream is = fileStore.openStream(entry.getStorageKey())) {
+            // Lese max. MAX_PREVIEW_BYTES + 1 Bytes um Truncation zu erkennen
+            byte[] preview = is.readNBytes(MAX_PREVIEW_BYTES + 1);
+            boolean truncated = preview.length > MAX_PREVIEW_BYTES;
+            if (truncated) preview = Arrays.copyOf(preview, MAX_PREVIEW_BYTES);
 
             // Strict UTF-8 decoding – returns null for binary content
             var decoder = StandardCharsets.UTF_8.newDecoder()

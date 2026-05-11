@@ -5,7 +5,6 @@ import de.merkeg.shawty.entry.rest.EntryInfo;
 import de.merkeg.shawty.entry.rest.NewEntryRequest;
 import de.merkeg.shawty.entry.rest.NewEntryResponse;
 import de.merkeg.shawty.filestore.FileStore;
-import de.merkeg.shawty.filestore.StoredFile;
 import de.merkeg.shawty.user.Role;
 import de.merkeg.shawty.user.User;
 import de.merkeg.shawty.util.StringUtil;
@@ -19,12 +18,11 @@ import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.UriBuilder;
-
-import java.io.IOException;
-import java.io.InputStream;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.validator.routines.UrlValidator;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLConnection;
 
 @ApplicationScoped
@@ -46,9 +44,10 @@ public class EntryService {
 
     @Transactional
     public Entry createFileEntry(@Valid NewEntryRequest req) {
-
-        String extension = FilenameUtils.getExtension(req.getFilename());
-        String deleteKey = StringUtil.longUniqueText(1);
+        String extension  = FilenameUtils.getExtension(req.getFilename());
+        String deleteKey  = StringUtil.longUniqueText(1);
+        String contentType = URLConnection.guessContentTypeFromName(req.getFilename());
+        if (contentType == null) contentType = "application/octet-stream";
 
         Entry entry = Entry.builder()
                 .originalFilename(req.getFilename())
@@ -56,6 +55,7 @@ public class EntryService {
                 .uploader((User) securityIdentity.getPrincipal())
                 .type(EntryType.FILE)
                 .deleteKeyHash(StringUtil.hashString(deleteKey))
+                .contentType(contentType)
                 .build();
 
         entry.persist();
@@ -63,9 +63,6 @@ public class EntryService {
         String storageKey = entry.getId() + "." + extension;
         entry.setStorageKey(storageKey);
         entry.setFileSize(req.getFile().length());
-
-        String contentType = URLConnection.guessContentTypeFromName(req.getFilename());
-        if (contentType == null) contentType = "application/octet-stream";
 
         fileStore.store(storageKey, req.getFile(), contentType);
 
@@ -90,15 +87,7 @@ public class EntryService {
         return new EntryWithDeleteKey(entry, deleteKey);
     }
 
-    // ── Read ───────────────────────────────────────────────────────────────────
-
-    public StoredFile getEntryBytes(Entry entry) {
-        return fileStore.get(entry.getStorageKey());
-    }
-
-    public StoredFile getEntryBytesRange(Entry entry, long start, long end) {
-        return fileStore.getRange(entry.getStorageKey(), start, end);
-    }
+    // ── Read (streaming only) ──────────────────────────────────────────────────
 
     public InputStream openEntryStream(Entry entry) {
         try {
@@ -126,8 +115,8 @@ public class EntryService {
 
         EntryInfo info = entryInfoMapper.toDto(entry);
 
-        String base = normalizeBaseUrl(applicationConfig.baseUrl());
-        String pageUrl     = UriBuilder.fromUri(base).path(entry.getId()).build().toString();
+        String base    = normalizeBaseUrl(applicationConfig.baseUrl());
+        String pageUrl = UriBuilder.fromUri(base).path(entry.getId()).build().toString();
         String deletionUrl = rawDeleteKey != null
                 ? UriBuilder.fromUri(base).path(entry.getId()).path(rawDeleteKey).build().toString()
                 : null;
@@ -201,6 +190,7 @@ public class EntryService {
             this.setExtension(delegate.getExtension());
             this.setStorageKey(delegate.getStorageKey());
             this.setFileSize(delegate.getFileSize());
+            this.setContentType(delegate.getContentType());
             this.setOriginalFilename(delegate.getOriginalFilename());
             this.setType(delegate.getType());
             this.setUrl(delegate.getUrl());
