@@ -92,6 +92,10 @@ public class EntryService {
         return fileStore.get(entry.getStorageKey());
     }
 
+    public StoredFile getEntryBytesRange(Entry entry, long start, long end) {
+        return fileStore.getRange(entry.getStorageKey(), start, end);
+    }
+
     // ── Response builder ───────────────────────────────────────────────────────
 
     public NewEntryResponse buildEntryResponse(Entry entry) {

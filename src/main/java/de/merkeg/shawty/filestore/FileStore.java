@@ -22,10 +22,18 @@ public interface FileStore {
     StoredFile get(String key);
 
     /**
+     * Lädt einen Bytebereich einer Datei (für HTTP Range Requests / Video-Streaming).
+     *
+     * @param key   eindeutiger Schlüssel
+     * @param start erster Byte-Index (inklusiv)
+     * @param end   letzter Byte-Index (inklusiv)
+     */
+    StoredFile getRange(String key, long start, long end);
+
+    /**
      * Löscht eine Datei anhand des Schlüssels.
      *
      * @param key eindeutiger Schlüssel
      */
     void delete(String key);
 }
-

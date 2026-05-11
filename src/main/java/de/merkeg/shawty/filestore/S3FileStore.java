@@ -42,6 +42,17 @@ public class S3FileStore implements FileStore {
     }
 
     @Override
+    public StoredFile getRange(String key, long start, long end) {
+        GetObjectRequest request = GetObjectRequest.builder()
+                .bucket(applicationConfig.bucket())
+                .key(key)
+                .range("bytes=" + start + "-" + end)
+                .build();
+        var response = s3Client.getObjectAsBytes(request);
+        return new StoredFile(response.asByteArray(), response.response().contentType());
+    }
+
+    @Override
     public void delete(String key) {
         DeleteObjectRequest request = DeleteObjectRequest.builder()
                 .bucket(applicationConfig.bucket())
@@ -50,4 +61,3 @@ public class S3FileStore implements FileStore {
         s3Client.deleteObject(request);
     }
 }
-

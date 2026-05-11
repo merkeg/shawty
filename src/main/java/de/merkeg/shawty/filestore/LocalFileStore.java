@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,13 +43,26 @@ public class LocalFileStore implements FileStore {
         }
         try {
             byte[] content = Files.readAllBytes(target);
-            String contentType = URLConnection.guessContentTypeFromName(key);
-            if (contentType == null) {
-                contentType = "application/octet-stream";
-            }
-            return new StoredFile(content, contentType);
+            return new StoredFile(content, guessContentType(key));
         } catch (IOException e) {
             throw new InternalServerErrorException("Failed to read file from local store: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public StoredFile getRange(String key, long start, long end) {
+        Path target = resolveKey(key);
+        if (!Files.exists(target)) {
+            throw new NotFoundException("File not found in local store: " + key);
+        }
+        try (RandomAccessFile raf = new RandomAccessFile(target.toFile(), "r")) {
+            long length = end - start + 1;
+            byte[] buffer = new byte[(int) length];
+            raf.seek(start);
+            raf.readFully(buffer);
+            return new StoredFile(buffer, guessContentType(key));
+        } catch (IOException e) {
+            throw new InternalServerErrorException("Failed to read file range from local store: " + e.getMessage(), e);
         }
     }
 
@@ -66,5 +80,9 @@ public class LocalFileStore implements FileStore {
     private Path resolveKey(String key) {
         return Path.of(applicationConfig.localStoragePath()).resolve(key);
     }
-}
 
+    private String guessContentType(String key) {
+        String ct = URLConnection.guessContentTypeFromName(key);
+        return ct != null ? ct : "application/octet-stream";
+    }
+}

@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jboss.resteasy.reactive.RestResponse;
@@ -83,19 +84,85 @@ public class EntryResource {
     }
 
     /**
-     * Serves the raw file inline – used by the HTML preview page for embedding
-     * (img src, video src, audio src, PDF embed).
+     * Serves the raw file inline – supports HTTP Range requests for video/audio streaming.
      */
     @GET
     @Path("/{entryId}/raw")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     @Transactional
-    public RestResponse<byte[]> getRawFile(
-            @PathParam("entryId") @Pattern(regexp = "[0-9A-Za-z]{1,22}", message = "Invalid entry ID") String entryId) {
+    public Response getRawFile(
+            @PathParam("entryId") @Pattern(regexp = "[0-9A-Za-z]{1,22}", message = "Invalid entry ID") String entryId,
+            @HeaderParam("Range") String rangeHeader) {
 
         Entry entry = Entry.findById(entryId);
         if (entry == null) throw new NotFoundException("File not found");
-        return serveFile(entry, "inline");
+
+        String disposition = "inline; filename=\"" + entry.getOriginalFilename() + "\"";
+        long totalSize = entry.getFileSize() != null ? entry.getFileSize() : -1;
+
+        // ── Range request (partial content) ───────────────────────────────────
+        if (rangeHeader != null && rangeHeader.startsWith("bytes=") && totalSize > 0) {
+            try {
+                String rangeSpec = rangeHeader.substring(6); // strip "bytes="
+                // Only handle first range (multi-range not needed for video)
+                String firstRange = rangeSpec.split(",")[0].trim();
+
+                long start, end;
+                if (firstRange.startsWith("-")) {
+                    // bytes=-N  →  last N bytes
+                    long suffix = Long.parseLong(firstRange.substring(1));
+                    start = Math.max(0, totalSize - suffix);
+                    end = totalSize - 1;
+                } else if (firstRange.endsWith("-")) {
+                    // bytes=N-  →  from N to end
+                    start = Long.parseLong(firstRange.substring(0, firstRange.length() - 1));
+                    end = totalSize - 1;
+                } else {
+                    // bytes=N-M
+                    String[] parts = firstRange.split("-");
+                    start = Long.parseLong(parts[0]);
+                    end = Long.parseLong(parts[1]);
+                }
+
+                end = Math.min(end, totalSize - 1);
+                if (start > end || start < 0) {
+                    return Response.status(416)
+                            .header("Content-Range", "bytes */" + totalSize)
+                            .build();
+                }
+
+                StoredFile chunk = entryService.getEntryBytesRange(entry, start, end);
+                String contentType = resolveContentType(chunk.contentType());
+
+                return Response.status(206)
+                        .header("Content-Type", contentType)
+                        .header("Content-Range", "bytes " + start + "-" + end + "/" + totalSize)
+                        .header("Content-Length", chunk.content().length)
+                        .header("Accept-Ranges", "bytes")
+                        .header("Content-Disposition", disposition)
+                        .entity(chunk.content())
+                        .build();
+
+            } catch (NumberFormatException e) {
+                log.debug("Unparseable Range header: {}", rangeHeader);
+                // fall through to full response
+            }
+        }
+
+        // ── Full response ──────────────────────────────────────────────────────
+        StoredFile storedFile = entryService.getEntryBytes(entry);
+        String contentType = resolveContentType(storedFile.contentType());
+
+        Response.ResponseBuilder builder = Response.ok(storedFile.content())
+                .header("Content-Type", contentType)
+                .header("Accept-Ranges", "bytes")
+                .header("Content-Disposition", disposition);
+
+        if (totalSize > 0) {
+            builder.header("Content-Length", totalSize);
+        }
+
+        return builder.build();
     }
 
     // ── Delete endpoints ───────────────────────────────────────────────────────
@@ -131,14 +198,18 @@ public class EntryResource {
 
     private RestResponse<byte[]> serveFile(Entry entry, String dispositionType) {
         StoredFile storedFile = entryService.getEntryBytes(entry);
-        String contentType = storedFile.contentType();
-        if (contentType != null && contentType.startsWith("text/") && !contentType.contains("charset")) {
-            contentType = contentType + "; charset=UTF-8";
-        }
+        String contentType = resolveContentType(storedFile.contentType());
         return RestResponse.ResponseBuilder.ok(storedFile.content())
                 .header("Content-Disposition", dispositionType + "; filename=\"" + entry.getOriginalFilename() + "\"")
                 .header("Content-Type", contentType)
                 .build();
+    }
+
+    private String resolveContentType(String contentType) {
+        if (contentType != null && contentType.startsWith("text/") && !contentType.contains("charset")) {
+            return contentType + "; charset=UTF-8";
+        }
+        return contentType;
     }
 
     @SneakyThrows

@@ -43,6 +43,29 @@ Two ways to delete an uploaded entry exist:
 1. **Delete key** – every upload response includes a `deleteKey`. Send a `GET` request to `/{entryId}/{deleteKey}` to delete it without authentication.
 2. **Authenticated DELETE** – send `DELETE /api/entries/{entryId}` with a valid API key. Uploaders can only delete their own entries, admins can delete any entry.
 
+## Reverse Proxy (nginx)
+
+If you run shawty behind an nginx reverse proxy, you **must** also configure the body size limit in nginx – `MAX_BODY_SIZE` only controls the Quarkus layer. The nginx default is **1 MB**.
+
+```nginx
+server {
+    client_max_body_size 10G;  # match your MAX_BODY_SIZE value
+
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_request_buffering off;  # stream uploads directly, don't buffer in nginx
+    }
+}
+```
+
+After editing, reload nginx:
+
+```bash
+nginx -t && systemctl reload nginx
+```
+
 ## Environment Variables
 
 ### General
@@ -52,7 +75,7 @@ Two ways to delete an uploaded entry exist:
 | `BASE_URL`      | Public base URL of the application                | `https://s.example.com` | –       |
 | `ADMIN_API_KEY` | Static admin API key, checked in-memory (optional)| `my-secret-key`         | –       |
 | `LOG_LEVEL`     | Log level                                         | `DEBUG`                 | `INFO`  |
-| `MAX_BODY_SIZE` | Maximum HTTP body size                            | `5G`                    | `1G`    |
+| `MAX_BODY_SIZE` | Maximum HTTP body size (Quarkus only, see note below) | `5G`                | `1G`    |
 
 ---
 
