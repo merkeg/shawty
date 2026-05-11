@@ -65,7 +65,7 @@ public class EntryHtmlService {
 
         String contentType = entry.getContentType();
         if (contentType == null || contentType.isBlank()) {
-            // Fallback für Einträge vor der DB-Migration
+            // Fallback for entries created before the DB migration
             contentType = URLConnection.guessContentTypeFromName(entry.getOriginalFilename());
         }
         if (contentType == null) contentType = "application/octet-stream";
@@ -154,7 +154,7 @@ public class EntryHtmlService {
 
     private TextContent loadTextContent(Entry entry) {
         try (InputStream is = fileStore.openStream(entry.getStorageKey())) {
-            // Lese max. MAX_PREVIEW_BYTES + 1 Bytes um Truncation zu erkennen
+            // Read at most MAX_PREVIEW_BYTES + 1 to detect truncation without loading the full file
             byte[] preview = is.readNBytes(MAX_PREVIEW_BYTES + 1);
             boolean truncated = preview.length > MAX_PREVIEW_BYTES;
             if (truncated) preview = Arrays.copyOf(preview, MAX_PREVIEW_BYTES);

@@ -7,27 +7,36 @@ import java.io.InputStream;
 public interface FileStore {
 
     /**
-     * Speichert eine Datei unter dem angegebenen Schlüssel.
+     * Stores a file under the given key.
+     *
+     * @param key         unique storage key (e.g. entryId.ext)
+     * @param file        file to store
+     * @param contentType MIME type of the file
      */
     void store(String key, File file, String contentType);
 
     /**
-     * Öffnet einen Stream auf die gesamte Datei.
-     * Caller ist für das Schließen des Streams verantwortlich.
+     * Opens an input stream for the entire file.
+     * The caller is responsible for closing the stream.
+     *
+     * @param key unique storage key
      */
     InputStream openStream(String key) throws IOException;
 
     /**
-     * Öffnet einen Stream auf einen Bytebereich der Datei (HTTP Range Requests).
-     * Caller ist für das Schließen des Streams verantwortlich.
+     * Opens an input stream for a byte range of the file (HTTP Range Requests / streaming).
+     * The caller is responsible for closing the stream.
      *
-     * @param start erster Byte-Index (inklusiv)
-     * @param end   letzter Byte-Index (inklusiv)
+     * @param key   unique storage key
+     * @param start first byte index (inclusive)
+     * @param end   last byte index (inclusive)
      */
     InputStream openStream(String key, long start, long end) throws IOException;
 
     /**
-     * Löscht eine Datei anhand des Schlüssels.
+     * Deletes a file by its key.
+     *
+     * @param key unique storage key
      */
     void delete(String key);
 }

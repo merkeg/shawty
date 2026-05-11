@@ -14,8 +14,8 @@ import java.util.HashSet;
 import java.util.Optional;
 
 /**
- * Prüft, ob ein gegebener API-Key dem konfigurierten ADMIN_API_KEY entspricht.
- * Die Authentifizierung erfolgt rein in-memory – der Key wird nicht in der DB gespeichert.
+ * Checks whether a given API key matches the configured {@code ADMIN_API_KEY}.
+ * Authentication is performed purely in-memory – the key is never stored in the database.
  */
 @ApplicationScoped
 @Slf4j
@@ -25,9 +25,9 @@ public class AdminApiKeyAuthenticator {
     ApplicationConfig applicationConfig;
 
     /**
-     * Prüft den übergebenen Klartext-Key gegen den konfigurierten ADMIN_API_KEY.
-     * Gibt ein SecurityIdentity für den virtuellen Admin zurück, wenn der Key passt –
-     * ansonsten {@link Optional#empty()}.
+     * Compares the provided plaintext key against the configured {@code ADMIN_API_KEY}.
+     * Returns a {@link SecurityIdentity} for the admin user if the key matches,
+     * otherwise returns {@link Optional#empty()}.
      */
     @Transactional
     public Optional<SecurityIdentity> authenticate(String apiKey) {
@@ -40,7 +40,7 @@ public class AdminApiKeyAuthenticator {
             return Optional.empty();
         }
 
-        // Admin-User aus der DB laden (der beim Startup erzeugte ADMIN-User)
+        // Load the admin user created on first startup
         User adminUser = User.<User>find("role", Role.admin).firstResult();
         if (adminUser == null) {
             log.warn("ADMIN_API_KEY matched but no admin user found in database");
@@ -54,4 +54,3 @@ public class AdminApiKeyAuthenticator {
                 .build());
     }
 }
-

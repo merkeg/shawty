@@ -40,6 +40,9 @@ public class EntryService {
     @Inject
     EntryInfo.Mapper entryInfoMapper;
 
+    @Inject
+    EntryMapper entryMapper;
+
     // ── Create ─────────────────────────────────────────────────────────────────
 
     @Transactional
@@ -66,7 +69,9 @@ public class EntryService {
 
         fileStore.store(storageKey, req.getFile(), contentType);
 
-        return new EntryWithDeleteKey(entry, deleteKey);
+        EntryWithDeleteKey result = entryMapper.copyToDeleteKeyEntry(entry);
+        result.setRawDeleteKey(deleteKey);
+        return result;
     }
 
     @Transactional
@@ -84,7 +89,10 @@ public class EntryService {
                 .build();
 
         entry.persist();
-        return new EntryWithDeleteKey(entry, deleteKey);
+
+        EntryWithDeleteKey result = entryMapper.copyToDeleteKeyEntry(entry);
+        result.setRawDeleteKey(deleteKey);
+        return result;
     }
 
     // ── Read (streaming only) ──────────────────────────────────────────────────
@@ -179,28 +187,13 @@ public class EntryService {
     // ── Inner carrier ──────────────────────────────────────────────────────────
 
     /**
-     * Thin wrapper that carries the plain-text delete key alongside the persisted
-     * Entry – only used transiently in the same request before the response is built.
+     * Thin wrapper that carries the plaintext delete key alongside the persisted Entry.
+     * Only used transiently within the same request before the response is built.
+     * Fields are copied from the delegate {@link Entry} via {@link EntryMapper}.
      */
     public static class EntryWithDeleteKey extends Entry {
-        private final String rawDeleteKey;
-
-        public EntryWithDeleteKey(Entry delegate, String rawDeleteKey) {
-            this.setId(delegate.getId());
-            this.setExtension(delegate.getExtension());
-            this.setStorageKey(delegate.getStorageKey());
-            this.setFileSize(delegate.getFileSize());
-            this.setContentType(delegate.getContentType());
-            this.setOriginalFilename(delegate.getOriginalFilename());
-            this.setType(delegate.getType());
-            this.setUrl(delegate.getUrl());
-            this.setDeleteKeyHash(delegate.getDeleteKeyHash());
-            this.setUploader(delegate.getUploader());
-            this.rawDeleteKey = rawDeleteKey;
-        }
-
-        public String getRawDeleteKey() {
-            return rawDeleteKey;
-        }
+        @lombok.Getter
+        @lombok.Setter
+        private String rawDeleteKey;
     }
 }

@@ -47,12 +47,12 @@ public class BearerTokenAuthMechanism implements HttpAuthenticationMechanism, Au
 
         return Uni.createFrom().emitter(uniEmitter -> {
             securityExecutor.executeBlocking(() -> {
-                // Zuerst ADMIN_API_KEY prüfen (in-memory, kein DB-Lookup)
+                // Check ADMIN_API_KEY first (in-memory, no DB lookup)
                 var adminIdentity = adminApiKeyAuthenticator.authenticate(key);
                 if (adminIdentity.isPresent()) {
                     return adminIdentity.get();
                 }
-                // Normaler DB-Lookup
+                // Regular DB lookup
                 ApiKey apiKey = apiKeyService.findKey(de.merkeg.shawty.util.StringUtil.hashString(key));
                 if (apiKey == null) {
                     log.debug("Api Key not found {}", key);

@@ -21,9 +21,9 @@ import java.util.Base64;
 import java.util.HashSet;
 
 /**
- * HTTP Basic Auth Mechanismus.
- * Der Benutzername wird ignoriert – das Passwort wird als API-Key verwendet.
- * Kompatibel mit Dropshare und anderen Clients die Basic Auth unterstützen.
+ * HTTP Basic Auth mechanism.
+ * The username is ignored – the password is used as the API key.
+ * Compatible with Dropshare and other clients that support Basic Auth.
  */
 @ApplicationScoped
 @Slf4j
@@ -47,12 +47,12 @@ public class BasicAuthMechanism implements HttpAuthenticationMechanism, Authenti
 
         return Uni.createFrom().emitter(uniEmitter -> {
             securityExecutor.executeBlocking(() -> {
-                // Zuerst ADMIN_API_KEY prüfen (in-memory, kein DB-Lookup)
+                // Check ADMIN_API_KEY first (in-memory, no DB lookup)
                 var adminIdentity = adminApiKeyAuthenticator.authenticate(apiKey);
                 if (adminIdentity.isPresent()) {
                     return adminIdentity.get();
                 }
-                // Normaler DB-Lookup
+                // Regular DB lookup
                 ApiKey apiKeyEntity = apiKeyService.findKey(de.merkeg.shawty.util.StringUtil.hashString(apiKey));
                 if (apiKeyEntity == null) {
                     log.debug("API Key via Basic Auth not found");
@@ -93,7 +93,7 @@ public class BasicAuthMechanism implements HttpAuthenticationMechanism, Authenti
         }
         try {
             String decoded = new String(Base64.getDecoder().decode(authorization.substring(6)), StandardCharsets.UTF_8);
-            // Format: "username:password" – Passwort ist der API-Key
+            // Format: "username:password" – password is the API key
             int colonIndex = decoded.indexOf(':');
             if (colonIndex < 0) {
                 return null;
