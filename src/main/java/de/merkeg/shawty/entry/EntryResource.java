@@ -53,14 +53,12 @@ public class EntryResource {
 
     /**
      * Returns an HTML preview page for the entry.
-     * If {@code ?download=true} is set, the raw file is returned as a download attachment.
      */
     @GET
     @Path("/{entryId}")
     @Transactional
     public Response getEntry(
-            @PathParam("entryId") @Pattern(regexp = "[0-9A-Za-z]{1,22}", message = "Invalid entry ID") String entryId,
-            @QueryParam("download") boolean download) {
+            @PathParam("entryId") @Pattern(regexp = "[0-9A-Za-z]{1,22}", message = "Invalid entry ID") String entryId) {
 
         Entry entry = Entry.findById(entryId);
         if (entry == null) {
@@ -72,12 +70,24 @@ public class EntryResource {
             return redirectEntry(entry).toResponse();
         }
 
-        if (download) {
-            return serveFile(entry, "attachment");
-        }
-
         String html = entryHtmlService.buildPage(entry);
         return Response.ok(html).header("Content-Type", "text/html; charset=UTF-8").build();
+    }
+
+    /**
+     * Serves the file as a download attachment.
+     */
+    @GET
+    @Path("/{entryId}/download")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    @Transactional
+    public Response downloadFile(
+            @PathParam("entryId") @Pattern(regexp = "[0-9A-Za-z]{1,22}", message = "Invalid entry ID") String entryId) {
+
+        Entry entry = Entry.findById(entryId);
+        if (entry == null) throw new NotFoundException("File not found");
+        if (entry.getType() == EntryType.URL) throw new BadRequestException("This entry is a URL redirect, not a file");
+        return serveFile(entry, "attachment");
     }
 
     /**
@@ -93,6 +103,7 @@ public class EntryResource {
 
         Entry entry = Entry.findById(entryId);
         if (entry == null) throw new NotFoundException("File not found");
+        if (entry.getType() == EntryType.URL) throw new BadRequestException("This entry is a URL redirect, not a file");
 
         String disposition = "inline; filename=\"" + entry.getOriginalFilename() + "\"";
         long totalSize = entry.getFileSize() != null ? entry.getFileSize() : -1;

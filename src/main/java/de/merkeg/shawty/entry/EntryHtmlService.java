@@ -61,7 +61,7 @@ public class EntryHtmlService {
         UriBuilder entryUri = UriBuilder.fromUri(base).path(entry.getId());
         String pageUrl     = entryUri.build().toString();
         String rawUrl      = entryUri.clone().path("raw").build().toString();
-        String downloadUrl = entryUri.clone().queryParam("download", "true").build().toString();
+        String downloadUrl = entryUri.clone().path("download").build().toString();
 
         String contentType = entry.getContentType();
         if (contentType == null || contentType.isBlank()) {
