@@ -23,6 +23,8 @@ public class Entry extends PanacheEntityBase {
 
     private String storageKey;
 
+    private Long fileSize;
+
     private String originalFilename;
 
     @Enumerated(EnumType.STRING)

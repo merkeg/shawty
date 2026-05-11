@@ -75,6 +75,7 @@ public class EntryService {
 
         String storageKey = entry.getId() + "." + extension;
         entry.setStorageKey(storageKey);
+        entry.setFileSize(req.getFile().length());
 
         String contentType = URLConnection.guessContentTypeFromName(req.getFilename());
         if (contentType == null) {

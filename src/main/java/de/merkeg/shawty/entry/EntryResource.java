@@ -21,11 +21,13 @@ import java.net.URI;
 @Slf4j
 public class EntryResource {
 
-    public static final String DISPOSITION_ATTACHMENT = "attachment";
-    public static final String DISPOSITION_INLINE = "inline";
-
     @Inject
     EntryService entryService;
+
+    @Inject
+    EntryHtmlService entryHtmlService;
+
+    // ── Upload endpoints ───────────────────────────────────────────────────────
 
     @POST
     @Path("/api/entries")
@@ -41,59 +43,61 @@ public class EntryResource {
     @RolesAllowed("uploader")
     public RestResponse<NewEntryResponse> shortenLink(NewUrlShortenRequest request) {
         Entry entry = entryService.createUrlEntry(request.getUrl());
-        NewEntryResponse response = entryService.buildEntryResponse(entry);
-        return RestResponse.ok(response);
+        return RestResponse.ok(entryService.buildEntryResponse(entry));
     }
 
+    // ── Public access endpoints ────────────────────────────────────────────────
 
-
+    /**
+     * Returns an HTML preview page for the entry.
+     * If {@code ?download=true} is set, the raw file is returned as a download attachment.
+     */
     @GET
     @Path("/{entryId}")
-    @Produces(MediaType.APPLICATION_OCTET_STREAM)
     @Transactional
     public RestResponse<?> getEntry(
             @PathParam("entryId") @Pattern(regexp = "[0-9A-Za-z]{1,22}", message = "Invalid entry ID") String entryId,
-            @QueryParam("download") boolean download,
-            @HeaderParam(value = "User-Agent") String userAgent) {
-        Entry entry = Entry.findById(entryId);
+            @QueryParam("download") boolean download) {
 
-        if(entry == null) {
+        Entry entry = Entry.findById(entryId);
+        if (entry == null) {
             throw new NotFoundException("File not found");
         }
 
-        EntryType type = entry.getType();
-
-        if(type == EntryType.FILE || type == null) {
-            return downloadEntry(entry, download, userAgent);
-        }
-
-        if(type == EntryType.URL) {
+        if (entry.getType() == EntryType.URL) {
             return redirectEntry(entry);
         }
 
-        throw new InternalServerErrorException("Method not implemented.");
-    }
-
-    private RestResponse<byte[]> downloadEntry(Entry entry, boolean download, String userAgent) {
-        String dispositionType = DISPOSITION_INLINE;
-        if(download || entryService.isLinkPreview(userAgent)) {
-            dispositionType = DISPOSITION_ATTACHMENT;
+        if (download) {
+            return serveFile(entry, "attachment");
         }
 
-        StoredFile storedFile = entryService.getEntryBytes(entry);
-        return RestResponse.ResponseBuilder.ok(storedFile.content())
-                .header("Content-Disposition", dispositionType + "; filename=\"" + entry.getOriginalFilename() + "\"")
-                .header("Content-Type", storedFile.contentType()).build();
+        String html = entryHtmlService.buildPage(entry);
+        return RestResponse.ResponseBuilder
+                .ok(html)
+                .header("Content-Type", "text/html; charset=UTF-8")
+                .build();
     }
 
-    @SneakyThrows
-    private RestResponse<Void> redirectEntry(Entry entry) {
-        return RestResponse.seeOther(new URI(entry.getUrl()));
+    /**
+     * Serves the raw file inline – used by the HTML preview page for embedding
+     * (img src, video src, audio src, PDF embed).
+     */
+    @GET
+    @Path("/{entryId}/raw")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    @Transactional
+    public RestResponse<byte[]> getRawFile(
+            @PathParam("entryId") @Pattern(regexp = "[0-9A-Za-z]{1,22}", message = "Invalid entry ID") String entryId) {
+
+        Entry entry = Entry.findById(entryId);
+        if (entry == null) {
+            throw new NotFoundException("File not found");
+        }
+        return serveFile(entry, "inline");
     }
 
-
-
-
+    // ── Delete ─────────────────────────────────────────────────────────────────
 
     @DELETE
     @Path("/{entryId}")
@@ -104,5 +108,18 @@ public class EntryResource {
         return RestResponse.ok();
     }
 
+    // ── Helpers ────────────────────────────────────────────────────────────────
 
+    private RestResponse<byte[]> serveFile(Entry entry, String dispositionType) {
+        StoredFile storedFile = entryService.getEntryBytes(entry);
+        return RestResponse.ResponseBuilder.ok(storedFile.content())
+                .header("Content-Disposition", dispositionType + "; filename=\"" + entry.getOriginalFilename() + "\"")
+                .header("Content-Type", storedFile.contentType())
+                .build();
+    }
+
+    @SneakyThrows
+    private RestResponse<Void> redirectEntry(Entry entry) {
+        return RestResponse.seeOther(new URI(entry.getUrl()));
+    }
 }
