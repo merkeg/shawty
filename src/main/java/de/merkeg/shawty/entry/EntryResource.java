@@ -3,6 +3,8 @@ package de.merkeg.shawty.entry;
 import de.merkeg.shawty.entry.rest.NewEntryRequest;
 import de.merkeg.shawty.entry.rest.NewEntryResponse;
 import de.merkeg.shawty.entry.rest.NewUrlShortenRequest;
+import io.quarkus.qute.Location;
+import io.quarkus.qute.Template;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -29,6 +31,18 @@ public class EntryResource {
 
     @Inject
     EntryHtmlService entryHtmlService;
+
+    @Inject
+    @Location("index")
+    Template indexTemplate;
+
+    // ── Index ──────────────────────────────────────────────────────────────────
+
+    @GET
+    @Path("/")
+    public Response index() {
+        return Response.ok(indexTemplate.render()).header("Content-Type", "text/html; charset=UTF-8").build();
+    }
 
     // ── Upload endpoints ───────────────────────────────────────────────────────
 

@@ -8,6 +8,7 @@ import io.quarkus.qute.Template;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.UriBuilder;
+import lombok.extern.slf4j.Slf4j;
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
 
@@ -22,6 +23,7 @@ import java.util.Arrays;
 import java.util.Set;
 
 @ApplicationScoped
+@Slf4j
 public class EntryHtmlService {
 
     private static final int MAX_PREVIEW_BYTES = 512 * 1024; // 512 KB
@@ -50,6 +52,9 @@ public class EntryHtmlService {
     @Inject
     FileStore fileStore;
 
+    @Inject
+    OfficePreviewService officePreviewService;
+
     public String buildNotFoundPage() {
         return notFoundTemplate.render();
     }
@@ -75,34 +80,54 @@ public class EntryHtmlService {
         boolean isAudio = contentType.startsWith("audio/");
         boolean isPdf   = contentType.equals("application/pdf");
 
-        boolean isMarkdown = isMarkdownFile(entry.getOriginalFilename());
-        boolean isText     = !isMarkdown && isTextFile(contentType, entry.getOriginalFilename());
+        boolean isMarkdown    = isMarkdownFile(entry.getOriginalFilename());
+        boolean isText        = !isMarkdown && isTextFile(contentType, entry.getOriginalFilename());
+        boolean isWord        = isWordFile(entry.getOriginalFilename());
+        boolean isSpreadsheet = isSpreadsheetFile(entry.getOriginalFilename());
+        boolean isPowerPoint  = isPowerPointFile(entry.getOriginalFilename());
 
-        // Load text/markdown content and validate UTF-8
-        Object renderedContent     = null;
-        boolean isPreviewTruncated = false;
-        String  prismLanguage      = "";
+        // Load text/markdown/office content
+        Object  renderedContent     = null;
+        boolean isPreviewTruncated  = false;
+        String  prismLanguage       = "";
 
         if (isMarkdown || isText) {
             TextContent tc = loadTextContent(entry);
             if (tc == null) {
-                // Binary or unreadable – skip text preview
                 isMarkdown = false;
                 isText     = false;
             } else {
                 isPreviewTruncated = tc.truncated();
                 if (isMarkdown) {
-                    Parser parser = Parser.builder().build();
-                    HtmlRenderer renderer = HtmlRenderer.builder().sanitizeUrls(true).build();
-                    renderedContent = new RawString(renderer.render(parser.parse(tc.content())));
+                    renderedContent = renderMarkdown(tc.content());
                 } else {
                     renderedContent = tc.content();
                     prismLanguage   = resolvePrismLanguage(entry.getOriginalFilename());
                 }
             }
+        } else if (isWord || isPowerPoint) {
+            try (var stream = fileStore.openStream(entry.getStorageKey())) {
+                String markdown = isWord
+                        ? officePreviewService.docxToMarkdown(stream)
+                        : officePreviewService.pptxToMarkdown(stream);
+                renderedContent = renderMarkdown(markdown);
+                isMarkdown = true;
+            } catch (Exception e) {
+                log.warn("Office preview failed for {}: {}", entry.getOriginalFilename(), e.getMessage());
+                isWord       = false;
+                isPowerPoint = false;
+                isMarkdown   = false;
+            }
+        } else if (isSpreadsheet) {
+            try (var stream = fileStore.openStream(entry.getStorageKey())) {
+                renderedContent = new RawString(officePreviewService.spreadsheetToHtml(stream));
+            } catch (Exception e) {
+                log.warn("Spreadsheet preview failed for {}: {}", entry.getOriginalFilename(), e.getMessage());
+                isSpreadsheet = false;
+            }
         }
 
-        boolean hasPreview = isImage || isVideo || isAudio || isPdf || isMarkdown || isText;
+        boolean hasPreview = isImage || isVideo || isAudio || isPdf || isMarkdown || isText || isSpreadsheet;
 
         String ogImage     = isImage ? rawUrl : "";
         String twitterCard = isImage ? "summary_large_image" : "summary";
@@ -123,6 +148,7 @@ public class EntryHtmlService {
                 .data("isPdf",              isPdf)
                 .data("isMarkdown",         isMarkdown)
                 .data("isText",             isText)
+                .data("isSpreadsheet",      isSpreadsheet)
                 .data("hasPreview",         hasPreview)
                 .data("renderedContent",    renderedContent)
                 .data("prismLanguage",      prismLanguage)
@@ -150,7 +176,31 @@ public class EntryHtmlService {
         return TEXT_EXTENSIONS.contains(filename.substring(dot + 1).toLowerCase());
     }
 
+    private boolean isWordFile(String filename) {
+        if (filename == null) return false;
+        String lower = filename.toLowerCase();
+        return lower.endsWith(".docx") || lower.endsWith(".doc");
+    }
+
+    private boolean isSpreadsheetFile(String filename) {
+        if (filename == null) return false;
+        String lower = filename.toLowerCase();
+        return lower.endsWith(".xlsx") || lower.endsWith(".xls");
+    }
+
+    private boolean isPowerPointFile(String filename) {
+        if (filename == null) return false;
+        String lower = filename.toLowerCase();
+        return lower.endsWith(".pptx") || lower.endsWith(".ppt");
+    }
+
     // ── Content loading ────────────────────────────────────────────────────────
+
+    private RawString renderMarkdown(String markdown) {
+        Parser parser = Parser.builder().build();
+        HtmlRenderer renderer = HtmlRenderer.builder().sanitizeUrls(true).build();
+        return new RawString(renderer.render(parser.parse(markdown)));
+    }
 
     private TextContent loadTextContent(Entry entry) {
         try (InputStream is = fileStore.openStream(entry.getStorageKey())) {
