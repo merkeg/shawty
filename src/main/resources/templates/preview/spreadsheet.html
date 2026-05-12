@@ -1,0 +1,22 @@
+{#include entry-base}
+{#extraStyles}
+<style>
+    .sheet-label { color: #9ca3af; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+                   letter-spacing: 0.05em; padding: 0.75rem 1rem 0.25rem; }
+    .sheet-scroll { overflow-x: auto; }
+    .office-table { border-collapse: collapse; width: max-content; min-width: 100%;
+                    font-size: 0.8125rem; color: #e5e7eb; }
+    .office-table th { background: #1f2937; color: #f9fafb; font-weight: 600;
+                       border: 1px solid #374151; padding: 0.4rem 0.75rem; white-space: nowrap; }
+    .office-table td { border: 1px solid #374151; padding: 0.35rem 0.75rem;
+                       white-space: nowrap; max-width: 24rem; overflow: hidden; text-overflow: ellipsis; }
+    .office-table tr:nth-child(even) td { background: #111827; }
+    .truncated-note { color: #6b7280; font-style: italic; padding: 0.5rem 0.75rem; text-align: center; }
+</style>
+{/extraStyles}
+{#previewPanel}
+<div class="overflow-auto max-h-[70vh] bg-gray-900">
+    {renderedContent}
+</div>
+{/previewPanel}
+{/include}

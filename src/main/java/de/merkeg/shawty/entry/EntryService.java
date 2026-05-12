@@ -18,14 +18,18 @@ import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.UriBuilder;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.validator.routines.UrlValidator;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLConnection;
+import java.util.List;
 
 @ApplicationScoped
+@Slf4j
 public class EntryService {
 
     @Inject
@@ -43,12 +47,15 @@ public class EntryService {
     @Inject
     EntryMapper entryMapper;
 
+    @Inject
+    ArchiveListingService archiveListingService;
+
     // ── Create ─────────────────────────────────────────────────────────────────
 
     @Transactional
     public Entry createFileEntry(@Valid NewEntryRequest req) {
-        String extension  = FilenameUtils.getExtension(req.getFilename());
-        String deleteKey  = StringUtil.longUniqueText(1);
+        String extension   = FilenameUtils.getExtension(req.getFilename());
+        String deleteKey   = StringUtil.longUniqueText(1);
         String contentType = URLConnection.guessContentTypeFromName(req.getFilename());
         if (contentType == null) contentType = "application/octet-stream";
 
@@ -68,6 +75,17 @@ public class EntryService {
         entry.setFileSize(req.getFile().length());
 
         fileStore.store(storageKey, req.getFile(), contentType);
+
+        // ── Archive listing ────────────────────────────────────────────────────
+        if (isArchiveFilename(req.getFilename())) {
+            try (InputStream is = new FileInputStream(req.getFile())) {
+                List<String> archiveEntries =
+                        archiveListingService.listFirstLevelEntries(is, req.getFilename());
+                entry.setArchiveEntries(archiveEntries);
+            } catch (Exception e) {
+                log.warn("Could not index archive entries for '{}': {}", req.getFilename(), e.getMessage());
+            }
+        }
 
         EntryWithDeleteKey result = entryMapper.copyToDeleteKeyEntry(entry);
         result.setRawDeleteKey(deleteKey);
@@ -182,6 +200,19 @@ public class EntryService {
 
     private String normalizeBaseUrl(String baseUrl) {
         return baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+    }
+
+    /**
+     * Returns {@code true} for archive extensions that {@link ArchiveListingService} can read.
+     * Other archive types (.rar, .7z) are not listed but still show the archive preview template.
+     */
+    static boolean isArchiveFilename(String filename) {
+        if (filename == null) return false;
+        String lower = filename.toLowerCase();
+        return lower.endsWith(".zip")
+                || lower.endsWith(".tar")
+                || lower.endsWith(".tar.gz")
+                || lower.endsWith(".tgz");
     }
 
     // ── Inner carrier ──────────────────────────────────────────────────────────

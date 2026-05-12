@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{filename} – shawty</title>
+
+    <meta property="og:title"       content="{filename}">
+    <meta property="og:type"        content="website">
+    <meta property="og:url"         content="{pageUrl}">
+    <meta property="og:description" content="{description}">
+    {#if ogImage}<meta property="og:image" content="{ogImage}">{/if}
+
+    <meta name="twitter:card"        content="{twitterCard}">
+    <meta name="twitter:title"       content="{filename}">
+    <meta name="twitter:description" content="{description}">
+    {#if ogImage}<meta name="twitter:image" content="{ogImage}">{/if}
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    {#insert extraStyles /}
+</head>
+
+<body class="bg-gray-950 min-h-screen flex flex-col items-center justify-center p-4 gap-4">
+    <div class="w-full max-w-4xl">
+
+        <div class="rounded-2xl overflow-hidden bg-gray-900 shadow-2xl">
+            {#insert previewPanel /}
+        </div>
+
+        <div class="mt-4 bg-gray-900 rounded-2xl px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full">
+            <div class="min-w-0 flex-1">
+                <p class="font-semibold text-white truncate">{filename}</p>
+                <p class="text-sm text-gray-400 mt-0.5">{formattedSize}</p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <a href="{rawUrl}" target="_blank"
+                   class="inline-flex items-center gap-2 bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                        <path d="M12.232 4.232a2.5 2.5 0 0 1 3.536 3.536l-1.225 1.224a.75.75 0 0 0 1.061 1.06l1.224-1.224a4 4 0 0 0-5.656-5.656l-3 3a4 4 0 0 0 .225 5.865.75.75 0 0 0 .977-1.138 2.5 2.5 0 0 1-.142-3.667l3-3Z"/>
+                        <path d="M11.603 7.963a.75.75 0 0 0-.977 1.138 2.5 2.5 0 0 1 .142 3.667l-3 3a2.5 2.5 0 0 1-3.536-3.536l1.225-1.224a.75.75 0 0 0-1.061-1.06l-1.224 1.224a4 4 0 0 0 5.656 5.656l3-3a4 4 0 0 0-.225-5.865Z"/>
+                    </svg>
+                    Direct
+                </a>
+                <a href="{downloadUrl}"
+                   class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                        <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z"/>
+                        <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"/>
+                    </svg>
+                    Download
+                </a>
+            </div>
+        </div>
+
+        {#if isPreviewTruncated}
+        <p class="mt-2 text-center text-xs text-gray-500">Preview limited to 512 KB – download the file to see the full content.</p>
+        {/if}
+
+    </div>
+</body>
+{#insert extraScripts /}
+</html>
+

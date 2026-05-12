@@ -2,10 +2,13 @@ package de.merkeg.shawty.entry;
 
 import de.merkeg.shawty.user.User;
 import de.merkeg.shawty.util.ShortUUID;
+import de.merkeg.shawty.util.StringListConverter;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.validator.constraints.Length;
+
+import java.util.List;
 
 @Entity(name = "entry")
 @Getter
@@ -39,4 +42,13 @@ public class Entry extends PanacheEntityBase {
 
     @ManyToOne
     private User uploader;
+
+    /**
+     * First-level entries of an archive (.zip / .tar / .tar.gz).
+     * {@code null} for non-archive files and for archives uploaded before this feature was added.
+     * Directories carry a trailing {@code /} in the stored values.
+     */
+    @Column(columnDefinition = "TEXT")
+    @Convert(converter = StringListConverter.class)
+    private List<String> archiveEntries;
 }

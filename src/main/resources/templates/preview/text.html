@@ -1,0 +1,14 @@
+{#include entry-base}
+{#extraStyles}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+{/extraStyles}
+{#previewPanel}
+<div class="overflow-auto max-h-[70vh] bg-[#2d2d2d]">
+    <pre class="!m-0 !rounded-none !bg-transparent !p-6 text-sm text-gray-100 language-{prismLanguage}"><code class="language-{prismLanguage}">{renderedContent}</code></pre>
+</div>
+{/previewPanel}
+{#extraScripts}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+{/extraScripts}
+{/include}
