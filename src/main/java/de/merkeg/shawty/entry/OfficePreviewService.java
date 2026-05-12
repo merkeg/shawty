@@ -99,24 +99,35 @@ public class OfficePreviewService {
         try (var wb = WorkbookFactory.create(inputStream)) {
             for (int si = 0; si < wb.getNumberOfSheets(); si++) {
                 Sheet sheet = wb.getSheetAt(si);
+
+                // ── First pass: determine the maximum column count ─────────────
+                int maxCols = 0;
+                int firstPassRows = 0;
+                for (Row row : sheet) {
+                    if (firstPassRows++ >= MAX_SHEET_ROWS) break;
+                    if (row.getLastCellNum() > maxCols) maxCols = row.getLastCellNum();
+                }
+
                 sb.append("<div class=\"sheet-label\">").append(escapeHtml(sheet.getSheetName())).append("</div>");
                 sb.append("<div class=\"sheet-scroll\"><table class=\"office-table\"><tbody>");
 
+                // ── Second pass: render rows, padding each to maxCols ──────────
                 int rowCount = 0;
                 for (Row row : sheet) {
                     if (rowCount++ >= MAX_SHEET_ROWS) {
-                        sb.append("<tr><td colspan=\"999\" class=\"truncated-note\">Preview limited to ")
+                        sb.append("<tr><td colspan=\"").append(maxCols)
+                          .append("\" class=\"truncated-note\">Preview limited to ")
                           .append(MAX_SHEET_ROWS).append(" rows</td></tr>");
                         break;
                     }
+                    boolean isHeader = rowCount == 1;
                     sb.append("<tr>");
-                    int lastCell = row.getLastCellNum();
-                    for (int ci = 0; ci < lastCell; ci++) {
+                    for (int ci = 0; ci < maxCols; ci++) {
                         var cell = row.getCell(ci);
                         String val = cell != null ? formatter.formatCellValue(cell) : "";
-                        sb.append(rowCount == 1 ? "<th>" : "<td>")
+                        sb.append(isHeader ? "<th>" : "<td>")
                           .append(escapeHtml(val))
-                          .append(rowCount == 1 ? "</th>" : "</td>");
+                          .append(isHeader ? "</th>" : "</td>");
                     }
                     sb.append("</tr>");
                 }
